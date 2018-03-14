@@ -1,7 +1,7 @@
 import unittest
 from unittest import TestCase, main
 from deblur_testing_methods import get_dl_urls, download_mock_dataset, \
-    import_mock_dataset, establish_dataset
+    import_mock_dataset, establish_dataset, post_trim
 from qiime2 import Artifact
 from qiime2 import Metadata
 from qiime2.plugins.demux.methods import emp_single
@@ -9,6 +9,8 @@ from qiime2.plugins.quality_filter.methods import q_score
 from qiime2.plugins.deblur.methods import denoise_16S
 import tempfile
 import os
+import biom
+import numpy as np
 
 NUM_CORES = 4
 
@@ -59,18 +61,10 @@ class TestDeblurTestMethods(TestCase):
 class TestImport(TestCase):
 
     def setUp(self):
-        #print("Importing data for expected")
-        #self.exp_seqs = Artifact.import_data("EMPSingleEndSequences",
-        #                            "data/mock-3/emp-single-end-sequences")
-
         print("Importing metadata for expected")
         self.exp_barcode_metadata = \
             Metadata.load("data/mock-3/sample-metadata.tsv")
 
-        #print("Demuxing for expected")
-        #self.exp_demux, = emp_single(self.exp_seqs,
-        #                             self.exp_barcode_metadata.get_category(
-        #                             "BarcodeSequence"))
         self.exp_demux = Artifact.load("data/mock-3/exp_demux.qza")
         self.exp_out = [self.exp_demux, self.exp_barcode_metadata]
         self.working_dir_fp = "data/mock-3"
@@ -96,35 +90,29 @@ class TestDeblur(TestCase):
 
     def test_establish_dataset(self):
         obs = establish_dataset(self.exp_demux, 150)
-        try:
-            self.assertEqual(self.exp_deblurred, obs)
-        except AssertionError as e:
-            if("uuid" in str(e)): # uuid is always unique so we expect this
-                pass
-            else:
-                self.fail(str(e))
-
-
-    def test_establish_dataset_post_trim(self):
-        obs = establish_dataset(self.exp_demux, 150, post_trim_length=100)
-        try:
-            self.assertEqual(self.exp_deblurred_pt, obs)
-        except AssertionError as e:
-            if("uuid" in str(e)): # uuid is always unique so we expect this
-                pass
-            else:
-                self.fail(str(e))
+        self.assertEqual(self.exp_deblurred.view(biom.Table), obs.view(biom.Table))
 
     def test_establish_dataset_ncores(self):
         obs = establish_dataset(self.exp_demux, 150,
                                   num_cores=self.num_parallel)
-        try:
-            self.assertEqual(self.exp_deblurred, obs)
-        except AssertionError as e:
-            if("uuid" in str(e)): # uuid is always unique so we expect this
-                pass
-            else:
-                self.fail(str(e))
+        self.assertEqual(self.exp_deblurred.view(biom.Table), obs.view(biom.Table))
+
+class TestPostTrim(TestCase):
+    def setUp(self):
+        self.t = biom.Table(np.array([[0,1,2,3],[4,5,6,7],[8,9,10,11],[3,1,2,7]]),
+                            ['AATT', 'AATG', 'ATGC','AATC'], ['S1', 'S2', 'S3', 'S4'])
+        self.exp_pt = biom.Table(np.array([[7,7,10,17],[8,9,10,11]]),
+                            ['AAT', 'ATG'], ['S1', 'S2', 'S3', 'S4'])
+        self.exp_pt = Artifact.import_data("FeatureTable[Frequency]",
+                                           self.exp_pt)
+
+    def test_post_trim(self):
+        obs = post_trim(self.t, 3)
+        print("----in----\n" + str(self.t))
+        print("----out----\n" + str(obs.view(biom.Table)))
+        print("----exp----\n" + str(self.exp_pt.view(biom.Table)))
+        self.assertEqual(self.exp_pt.view(biom.Table), obs.view(biom.Table))
+
 
 if __name__ == '__main__':
     main()

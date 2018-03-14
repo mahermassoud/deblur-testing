@@ -73,14 +73,13 @@ def import_mock_dataset(working_dir_fp, metadata_barcode_column):
     return demux, barcode_metadata
 
 
-def establish_dataset(demuxed_seqs, pre_trim_length, num_cores = None,
-                      post_trim_length = None):
+def establish_dataset(demuxed_seqs, pre_trim_length, num_cores = 1):
     """
     Given demuxed sequences, deblurs them and returns the result
 
     :param demuxed_data: qiime artifact of demuxed data
-    :param pre_trim_length: length that we want to trim sequences to before deblur is ran
-    :param post_trim_length: length we want to trimg sequences to after delbur is ran
+    :param pre_trim_length: length that we want to trim sequences to before
+        deblur is ran
 
     :return FeatureTable[Frequency] of deblured data. Post-trimmed to length
     post_trim_length if post_trim_length is not None
@@ -89,23 +88,9 @@ def establish_dataset(demuxed_seqs, pre_trim_length, num_cores = None,
     demuxed_qfiltered, demuxed_qf_stats = q_score(demuxed_seqs)
 
     print("Deblur-ing with trim length {:d}".format(pre_trim_length))
-    if(num_cores == None):
-        num_cores = 1;
     deblurred, repseq, deblur_stats = \
         denoise_16S(demuxed_qfiltered, pre_trim_length,
                     hashed_feature_ids = False, jobs_to_start = num_cores)
-
-    # if post_trim is not None, perform the collapse
-    if(post_trim_length != None):
-        print("Trimming post-demuxed seqs to {:d}".format(post_trim_length))
-        demuxed_biom = deblurred.view(biom.Table)
-        post_trimmed_biom = \
-            demuxed_biom.collapse(lambda i, m:i[:post_trim_length],
-                                  axis="observation")
-
-        post_trimmed = Artifact.import_data("FeatureTable[Frequency]",
-                                            post_trimmed_biom);
-        return post_trimmed
 
     return deblurred
 
@@ -114,9 +99,8 @@ def get_dl_urls(dataset_metadata_url, working_dir_fp):
     :param dataset_metadata_url is url where we can download dataset metadata like this
     https://github.com/caporaso-lab/mockrobiota/blob/master/data/mock-6/dataset-metadata.tsv
     :param working_dir_fp: filepath where sequences_url + barcodes_url file are downloaded to
-                           and put into a directory "emp-single-end-sequences". Ideally, this should be a
-                           mock-<n> directory from when you clone the mockrobiota github repo
-                           should not end with "/"
+                           and put into a directory "emp-single-end-sequences".
+                           Should not end with "/"
     :return tuple of 2 strings, URLs of sequence and index files respectively
     """
     wget.download(dataset_metadata_url, working_dir_fp)
@@ -127,3 +111,20 @@ def get_dl_urls(dataset_metadata_url, working_dir_fp):
     barcode_url = metadata.loc["raw-data-url-index-read", "value"]
 
     return seq_url, barcode_url
+
+
+def post_trim(deblurred_biom, post_trim_length):
+    """
+    Trims a deblurred set of seqs-- utility fn so we dont have to re-run establish_dataset()
+    :param deblurred_biom deblurred seqs as biom table
+    :param post_trim_length length to trim to
+    :return trimmed deblurred seqs
+    """
+    print("Trimming post-demuxed seqs to {:d}".format(post_trim_length))
+    post_trimmed_biom = \
+        deblurred_biom.collapse(lambda i, m: i[:post_trim_length],
+                                axis="observation", norm=False)
+
+    post_trimmed = Artifact.import_data("FeatureTable[Frequency]",
+                                        post_trimmed_biom);
+    return post_trimmed
