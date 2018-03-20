@@ -1,7 +1,7 @@
 .ipynb_checkpoints/
 test/.ipynb_checkpoints/
 test/analysis_testing_wd
-test/data
+test/data/mock-3
 test/
 *.fastq.gz
 sample-metadata.tsv
