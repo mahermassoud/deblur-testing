@@ -1,12 +1,15 @@
 from unittest import TestCase, main
-from methods import get_dl_urls, download_mock_dataset, \
-    import_dataset, establish_dataset, post_trim
+from methods import *
 from qiime2 import Artifact
 from qiime2 import Metadata
+from qiime2 import MetadataCategory
+from qiime2.plugins.demux.methods import emp_single
 import tempfile
 import os
 import biom
 import numpy as np
+from numpy.testing import assert_array_almost_equal
+from pandas.util.testing import assert_frame_equal
 
 NUM_CORES = 4
 
@@ -21,12 +24,13 @@ class TestImport(TestCase):
         self.exp_out = [self.exp_demux, self.exp_barcode_metadata]
         self.working_dir_fp = "data/mock-3"
 
-    def test_import_mock_dataset(self):
+    def test_import_dataset(self):
         obs = import_dataset(self.working_dir_fp, "BarcodeSequence")
         for i, entry in enumerate(obs):
             try:
                 self.assertEqual(entry, self.exp_out[i])
             except AssertionError as e:
+                # TODO fix this
                 if("uuid" in str(e)): # uuid is always unique so we expect this
                     continue
                 else:
@@ -49,6 +53,54 @@ class TestDeblur(TestCase):
                                   num_cores=self.num_parallel)
         self.assertEqual(self.exp_deblurred.view(biom.Table), obs.view(biom.Table))
 
+class TestPairwiseDist(TestCase):
+    def setUp(self):
+        self.jaccard_in = biom.Table(np.array([[1,1,0],[0,1,1]]),
+                                     ['A', 'B'], ['S1', 'S2','S3'])
+        self.jaccard_exp = np.array([[ 0. ,  0.5,  1. ],
+                                     [ 0.5,  0. ,  0.5],
+                                     [ 1. ,  0.5,  0. ]])
+        self.bc_in = biom.Table(np.array([[1,1,0],[0,2,3]]),
+                                ['A', 'B'], ['S1', 'S2','S3'])
+        self.bc_exp = np.array([[ 0.,  0.5,  1.],
+                                [ 0.5,  0., 0.33333333],
+                                [ 1.,  0.33333333,  0.]])
+
+    def test_jaccard(self):
+        obs = get_pairwise_dist_mat(self.jaccard_in,"jaccard")
+        assert_array_almost_equal(self.jaccard_exp, obs.data)
+
+    def test_bc(self):
+        obs = get_pairwise_dist_mat(self.bc_in,"braycurtis")
+        assert_array_almost_equal(self.bc_exp, obs.data)
+
+class TestPrePostDist(TestCase):
+    def setUp(self):
+            self.pre = biom.Table(np.array([[0,0],[1,1],[1,1],[1,1]]),
+                                  ['A', 'B', 'C','D'], ['S1', 'S2'])
+            self.post = biom.Table(np.array([[1,1],[0,1],[1,1],[1,2]]),
+                                  ['A', 'B', 'C','D'], ['S1', 'S2'])
+            self.exp = pd.DataFrame(columns=["seq","dist_type","dist"],
+                                    data= np.array([
+                                        ["A","jaccard", 1.0],
+                                        ["A","braycurtis",1.0],
+                                        ["B","jaccard",0.5],
+                                        ["B","braycurtis",1/3],
+                                        ["C","jaccard",0.0],
+                                        ["C","braycurtis",0.0],
+                                        ["D","jaccard",0.0],
+                                        ["D","braycurtis",0.2],
+                                    ]))
+            self.exp["dist"] = pd.to_numeric(self.exp["dist"])
+
+    def test_get_distance_distribution(self):
+        obs = get_distance_distribution(self.pre,self.post)
+        print("obs")
+        print(obs)
+        print("exp")
+        print(self.exp)
+        assert_frame_equal(self.exp, obs)
+
 class TestPostTrim(TestCase):
     def setUp(self):
         self.t = biom.Table(np.array([[0,1,2,3],[4,5,6,7],[8,9,10,11],[3,1,2,7]]),
@@ -60,11 +112,55 @@ class TestPostTrim(TestCase):
 
     def test_post_trim(self):
         obs = post_trim(self.t, 3)
-        print("----in----\n" + str(self.t))
-        print("----out----\n" + str(obs.view(biom.Table)))
-        print("----exp----\n" + str(self.exp_pt.view(biom.Table)))
-        self.assertEqual(self.exp_pt.view(biom.Table), obs.view(biom.Table))
 
+        # Sort them
+        obs = obs.sort_order(self.exp_pt.view(biom.Table).ids(axis="observation"),
+                             axis="observation")
+
+        print("----in----\n" + str(self.t))
+        print("----out----\n" + str(obs))
+        print("----exp----\n" + str(self.exp_pt.view(biom.Table)))
+        self.assertEqual(str(self.exp_pt.view(biom.Table)), str(obs))
+
+class TestShortSeq(TestCase):
+    def setUp(self):
+        barcode_map = pd.Series(['GTCA', 'TCAG', 'GGGG'],
+                   index=['sample1', 'sample2', 'sample3'])
+        barcode_map = MetadataCategory(barcode_map)
+
+        seqs_fp = "data/small"
+        seqs = Artifact.import_data("EMPSingleEndSequences",
+                            seqs_fp)
+
+        self.demuxed, = emp_single(seqs, barcode_map)
+        self.exp = 1
+
+    def test_get_shortest_seq(self):
+        obs = get_shortest_seq(self.demuxed)
+        self.assertEqual(self.exp, obs)
+
+class TestGetOverlap(TestCase):
+    def setUp(self):
+        self.some1 = biom.Table(np.array([[0,1,2,3],[0,1,2,3],[0,1,2,3],[0,1,2,3]]),
+                            ['AATT', 'AATG', 'ATGC','AATC'], ['S1', 'S2', 'S3', 'S4'])
+        self.some2 = biom.Table(np.array([[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0]]),
+                             ['AATG', 'AATT', 'ATGC','ACTC'], ['S1', 'S2', 'S3', 'S4'])
+        self.some1_exp = biom.Table(np.array([[0,1,2,3],[0,1,2,3],[0,1,2,3]]),
+                                ['AATG', 'AATT', 'ATGC'], ['S1', 'S2', 'S3', 'S4'])
+        self.some2_exp = biom.Table(np.array([[0,0,0,0],[0,0,0,0],[0,0,0,0]]),
+                                ['AATG', 'AATT', 'ATGC'], ['S1', 'S2', 'S3', 'S4'])
+        self.none = biom.Table(np.array([[0,1,2,3],[0,1,2,3],[0,1,2,3],[0,1,2,3]]),
+                                ['AA', 'GG', 'CC','DD'], ['S1', 'S2', 'S3', 'S4'])
+
+    def test_some_overlap(self):
+        obs1, obs2 = get_overlap_tables(self.some1, self.some2)
+        self.assertEqual(self.some1_exp, obs1)
+        self.assertEqual(self.some2_exp, obs2)
+
+    def test_no_overlap(self):
+        obs1, obs2 = get_overlap_tables(self.none, self.some1)
+        self.assertTrue(len(obs1.ids(axis="observation")) == 0)
+        self.assertTrue(len(obs2.ids(axis="observation")) == 0)
 
 # Tests for methods specific to mockrobiota
 class TestMockMethods(TestCase):

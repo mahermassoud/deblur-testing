@@ -11,6 +11,7 @@ import biom
 import os
 import scipy
 import skbio.io
+import numpy as np
 
 def import_dataset(working_dir_fp, metadata_barcode_column,
                    rev_comp_barcodes_in=False,
@@ -111,6 +112,8 @@ def get_distance_distribution(pre_table_overlap, post_table_overlap):
             if(fname == "jaccard"):
                 a = pre_pa.data(obs, axis='observation', dense=True)
                 b = post_pa.data(obs, axis='observation', dense=True)
+                print(obs)
+                print("jaccard between " + str(a) + " and " + str(b) + " f=" + str(f(a,b)))
             else:
                 a = pre_table_overlap.data(obs, axis='observation', dense=True)
                 b = post_table_overlap.data(obs, axis='observation',
@@ -120,9 +123,7 @@ def get_distance_distribution(pre_table_overlap, post_table_overlap):
     results = pd.DataFrame(results, columns = ["seq", "dist_type", "dist"])
     return results
 
-def get_pairwise_dist_mat(deblurred, dist_type):
-    deblur_biom = deblurred.view(biom.Table)
-
+def get_pairwise_dist_mat(deblur_biom, dist_type):
     if(dist_type == "jaccard"):
         deblur_biom = deblur_biom.pa(inplace=False)
 
@@ -140,7 +141,7 @@ def get_overlap_tables(pre, post):
     :param pre biom table of pre-trimmed deblurred seqs
     :param post biom table of post-trimmed deblurred seqs
     :return tuple of biom tables (pre_o,post_o) where each table only holds
-            reads found in pre and post arguments
+            reads found in pre and post arguments, in same order as post
     """
     pre_ids = pre.ids(axis='observation')
     post_ids = post.ids(axis='observation')
@@ -172,9 +173,9 @@ def get_shortest_seq(demuxed):
     lengths = {}
     for file_name, format_fp in directory.sequences.iter_views(FastqGzFormat):
         seqs = skbio.io.read(str(format_fp), format='fastq', phred_offset=33)
-        lengths[str(format_fp)] = min(len(s) for s in seqs)
+        lengths[str(format_fp)] = min([len(s) for s in seqs])
 
-    return min(lengths.items())[1]
+    return min(lengths.values())
 
 # The following methods are specific to mockrobiota dataset
 def get_dl_urls(dataset_metadata_url, working_dir_fp):
