@@ -45,12 +45,12 @@ class TestDeblur(TestCase):
         self.num_parallel = NUM_CORES
 
     def test_establish_dataset(self):
-        obs = establish_dataset(self.exp_demux, 150)
+        obs = do_deblur(self.exp_demux, 150)
         self.assertEqual(self.exp_deblurred.view(biom.Table), obs.view(biom.Table))
 
     def test_establish_dataset_ncores(self):
-        obs = establish_dataset(self.exp_demux, 150,
-                                  num_cores=self.num_parallel)
+        obs = do_deblur(self.exp_demux, 150,
+                        num_cores=self.num_parallel)
         self.assertEqual(self.exp_deblurred.view(biom.Table), obs.view(biom.Table))
 
 class TestPairwiseDist(TestCase):

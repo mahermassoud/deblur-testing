@@ -54,9 +54,9 @@ def import_dataset(working_dir_fp, metadata_barcode_column,
     return demux, barcode_metadata
 
 
-def establish_dataset(demuxed_seqs, pre_trim_length, num_cores = 1):
+def do_deblur(demuxed_seqs, pre_trim_length, num_cores = 1):
     """
-    Given demuxed sequences, quality filter,deblurs them and returns the result
+    Given demuxed sequences, quality filter,pre_trims them and returns the result
 
     :param demuxed_data: qiime artifact of demuxed data
     :param pre_trim_length: length that we want to trim sequences to before
