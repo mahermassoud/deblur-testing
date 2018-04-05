@@ -5,6 +5,7 @@ from qiime2.plugins.quality_filter.methods import q_score
 from qiime2.plugins.deblur.methods import denoise_16S
 from q2_types.per_sample_sequences import SingleLanePerSampleSingleEndFastqDirFmt, FastqGzFormat
 from skbio.diversity import beta_diversity
+from skbio.stats.distance import mantel
 import pandas as pd
 import wget
 import biom
@@ -162,6 +163,91 @@ def get_overlap_tables(pre, post):
 
     return (pre_table_overlap, post_table_overlap)
 
+def get_pre_post_distances(pre_artifacts, post_artifacts, trim_lengths):
+    """For each otu, get distance between the otu in pre and post. Returns
+    all distances in a pandas dataframe. Does jaccard and bray curtis
+
+    Parameters
+    ----------
+    pre_artifacts: array_like of qiime2.Artifacts type FeatureTable[Frequency]
+        pre-trimmed Artifacts in descending trim length order. Should be in
+        same order as post_artifacts
+    post_artifacts: array_like of qiime2 artifacts
+        post-trimmed Artifacts in descending trim length order. Should be in
+        same order as pre_artifacts
+    trim_lengths: array_like
+        Trim lengths in descending order, should correspond to other arguments
+
+    Returns
+    -------
+    Pandas dataframe that holds results for each pre-post mantel test
+    """
+    if(len(pre_artifacts) != len(post_artifacts)):
+        raise ValueError("Length of pre, post artifact lists should be same\n"
+                         "pre: {}, post: {}".format(len(pre_artifacts),
+                                                    len(post_artifacts)))
+
+    pre_overlaps = []
+    post_overlaps = []
+    all_dists = pd.DataFrame()
+    for i in range(len(pre_artifacts)):
+        # pre-post distances
+        pre_overlap_biom, post_overlap_biom = \
+            get_overlap_tables(pre_artifacts[i], post_artifacts[i])
+
+        pre_overlaps.append(pre_overlap_biom)
+        post_overlaps.append(post_overlap_biom)
+
+        dists = get_distance_distribution(pre_overlap_biom,
+                                                  post_overlap_biom)
+        dists["length"] = trim_lengths[i]
+        all_dists = all_dists.append(dists)
+
+def get_pairwise_diversity(pre_artifacts, post_artifacts, trim_lengths):
+    """For each pre-post pair, gets the pairwise distance matrix of each
+    sequence set and does a mantel test between pre and post pariwise distance
+    matrices using both jaccard and bray-curtis metrics
+
+    Parameters
+    ----------
+    pre_artifacts: array_like of qiime2.Artifacts type FeatureTable[Frequency]
+        pre-trimmed Artifacts in descending trim length order. Should be in
+        same order as post_artifacts
+    post_artifacts: array_like of qiime2 artifacts
+        post-trimmed Artifacts in descending trim length order. Should be in
+        same order as pre_artifacts
+    trim_lengths: array_like
+        Trim lengths in descending order, should correspond to other arguments
+
+    Returns
+    -------
+    Pandas dataframe that holds results for each pre-post mantel test
+    """
+    if(len(pre_artifacts) != len(post_artifacts)):
+        raise ValueError("Length of pre, post artifact lists should be same\n"
+                         "pre: {}, post: {}".format(len(pre_artifacts),
+                                                    len(post_artifacts)))
+
+    cols = ["trim_length", "dist_type", "r", "pval", "nsamples"]
+    pairwise_diversity = pd.DataFrame(columns=cols)
+    for i in range(len(pre_artifacts)):
+        # pairwise distance matrices
+        pre_biom = pre_artifacts[i].view(biom.Table)
+        post_biom = post_artifacts[i].view(biom.Table)
+
+        pre_d_j = get_pairwise_dist_mat(pre_biom, "jaccard")
+        post_d_j = get_pairwise_dist_mat(post_biom, "jaccard")
+        r, p, nsamp = mantel(pre_d_j, post_d_j)
+        pairwise_diversity = pairwise_diversity.append(dict(zip(cols, [trim_lengths[i], "jaccard", r, p, nsamp])),
+                                                       ignore_index=True)
+        pre_d_bc = get_pairwise_dist_mat(pre_biom, "braycurtis")
+        post_d_bc = get_pairwise_dist_mat(post_biom, "braycurtis")
+        r, p, nsamp = mantel(pre_d_bc, post_d_bc)
+        pairwise_diversity = pairwise_diversity.append(dict(zip(cols, [trim_lengths[i], "braycurtis", r, p, nsamp])),
+                                                       ignore_index=True)
+
+    pairwise_diversity["r_sq"] = pairwise_diversity["r"]**2
+
 def get_shortest_seq(demuxed):
     """
     Given a qiime artifact of demuxed reads, returns the length of the read
@@ -196,9 +282,6 @@ def get_dl_urls(dataset_metadata_url, working_dir_fp):
 
     return seq_url, barcode_url
 
-"""
-This module holds methods used to test deblur post-trim vs pre-trim results
-"""
 def download_mock_dataset(working_dir_fp, sequences_url, barcodes_url,
                           metadata_url):
     """
