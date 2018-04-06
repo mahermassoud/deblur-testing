@@ -230,6 +230,7 @@ def post_trims_art(input_artifact = None, trim_incr = 10,
         print(len(otu))
         if(len(otu) != trim_length):
             click.echo("Input table reads are not all same length. Invalid")
+            # TODO throw exception
             return
 
     # Calculate actual trim lengths
@@ -441,9 +442,9 @@ def calculate_trim_lengths(length, trim_incr, num_trims):
     # Pep-8
 # TODO test saving
 # TODO more testing!!!!
-# TODO consistent with 'vs "
+# TODO consistent with ' vs "
 # TODO use click groups
-# TODO seperate concerns by having a function that acts on artifacts and a function that acts on files that calls the artifact function
 # TODO ask dan abount seperation of concerns
 # TODO do eg.s in python console format
 # TODO throw exceptions?
+# TODO look @ math behind mantel

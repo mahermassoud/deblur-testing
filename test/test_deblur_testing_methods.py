@@ -74,13 +74,21 @@ class TestPairwiseDist(TestCase):
         obs = get_pairwise_dist_mat(self.bc_in,"braycurtis")
         assert_array_almost_equal(self.bc_exp, obs.data)
 
+    def test_get_pairwise_diversity(self):
+        #get_pairwise_diversity([jaccard])
+        #TODO this
+
+
 class TestPrePostDist(TestCase):
     def setUp(self):
-            self.pre = biom.Table(np.array([[0,0],[1,1],[1,1],[1,1]]),
+            self.pre_100 = biom.Table(np.array([[0,0],[1,1],[1,1],[1,1]]),
                                   ['A', 'B', 'C','D'], ['S1', 'S2'])
-            self.post = biom.Table(np.array([[1,1],[0,1],[1,1],[1,2]]),
+            self.post_100 = biom.Table(np.array([[1,1],[0,1],[1,1],[1,2]]),
                                   ['A', 'B', 'C','D'], ['S1', 'S2'])
-            self.exp = pd.DataFrame(columns=["seq","dist_type","dist"],
+            self.pre_50 = self.pre_100
+            self.post_50 = self.post_100
+
+            self.exp_100 = pd.DataFrame(columns=["seq","dist_type","dist"],
                                     data= np.array([
                                         ["A","jaccard", 1.0],
                                         ["A","braycurtis",1.0],
@@ -91,15 +99,50 @@ class TestPrePostDist(TestCase):
                                         ["D","jaccard",0.0],
                                         ["D","braycurtis",0.2],
                                     ]))
-            self.exp["dist"] = pd.to_numeric(self.exp["dist"])
+            self.exp_both = pd.DataFrame(columns=["seq","dist_type","dist",
+                                                  "length"],
+                               data= np.array([
+                                   ["A", "jaccard",    1.0, 100],
+                                   ["A", "braycurtis", 1.0, 100],
+                                   ["B", "jaccard",    0.5, 100],
+                                   ["B", "braycurtis", 1/3, 100],
+                                   ["C", "jaccard",    0.0, 100],
+                                   ["C", "braycurtis", 0.0, 100],
+                                   ["D", "jaccard",    0.0, 100],
+                                   ["D", "braycurtis", 0.2, 100],
+                                   # next
+                                   ["A", "jaccard",    1.0, 50],
+                                   ["A", "braycurtis", 1.0, 50],
+                                   ["B", "jaccard",    0.5, 50],
+                                   ["B", "braycurtis", 1/3, 50],
+                                   ["C", "jaccard",    0.0, 50],
+                                   ["C", "braycurtis", 0.0, 50],
+                                   ["D", "jaccard",    0.0, 50],
+                                   ["D", "braycurtis", 0.2, 50]
+                               ]))
+            self.exp_100["dist"] = pd.to_numeric(self.exp_100["dist"])
+            self.exp_both["dist"] = pd.to_numeric(self.exp_both["dist"])
+            self.exp_both["length"] = pd.to_numeric(self.exp_both["length"])
 
     def test_get_distance_distribution(self):
-        obs = get_distance_distribution(self.pre,self.post)
+        obs = get_distance_distribution(self.pre_100,self.post_100)
         print("obs")
         print(obs)
         print("exp")
-        print(self.exp)
-        assert_frame_equal(self.exp, obs)
+        print(self.exp_100)
+        assert_frame_equal(self.exp_100, obs)
+
+    def test_get_pre_post_distances(self):
+        obs = get_pre_post_distances([self.pre_100, self.pre_50],
+                                     [self.post_100, self.post_50],
+                                     [100, 50])
+        obs.index = list(range(obs.shape[0]))
+        assert_frame_equal(self.exp_both, obs)
+
+    def test_get_pre_post_distances_fail(self):
+        with self.assertRaises(ValueError):
+              get_pre_post_distances([self.pre_100, self.pre_50],
+                         [self.post_100, self.post_50], [100, 50, 1])
 
 class TestPostTrim(TestCase):
     def setUp(self):
