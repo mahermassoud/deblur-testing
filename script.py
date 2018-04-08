@@ -3,6 +3,7 @@ from qiime2 import Artifact, Metadata
 from qiime2.plugins.demux.methods import emp_single
 import methods
 import biom
+import glob
 import pandas as pd
 
 @click.command()
@@ -122,7 +123,7 @@ def pre_trims(input_fp, trim_length = 100, trim_incr = 10,
 def pre_trims_art(input_artifact, trim_length = 100, trim_incr = 10,
                   num_trims = 5, output_fp = None, num_cores = 1):
     """Quality filters and then pre_trims sequences to various pre-trim lengths
-    Saves qza's if specified. With naming format "deblurred_pre_<length>nt.qza
+    Saves qza's if specified. With naming format "deblurred_pre_<length>.qza
 
     Parameters
     ----------
@@ -156,7 +157,7 @@ def pre_trims_art(input_artifact, trim_length = 100, trim_incr = 10,
         db_out = methods.do_deblur(input_artifact, l, num_cores=num_cores)
         deblurreds.append(db_out)
         if(output_fp is not None):
-            db_out.save("deblurred_pt" + str(l) + "_nt.qza")
+            db_out.save("deblurred_pre_" + str(l) + ".qza")
 
     return deblurreds
 
@@ -172,7 +173,7 @@ def pre_trims_art(input_artifact, trim_length = 100, trim_incr = 10,
 def post_trims(input_fp, trim_incr = 10,
                num_trims = 5, output_fp = None):
     """Post trims to various specified lengths.
-    Saves qza's if specified. With naming format "deblurred_pt_<length>nt.qza
+    Saves qza's if specified. With naming format "deblurred_pt_<length>.qza
     eg. If input is length 100, trim_incr=10 and num_trims=5, post trims to
     lengths 100, 90, 80, 70, 60
 
@@ -201,7 +202,7 @@ def post_trims(input_fp, trim_incr = 10,
 def post_trims_art(input_artifact = None, trim_incr = 10,
                num_trims = 5, output_fp = None):
     """Post trims to various specified lengths.
-    Saves qza's if specified. With naming format "deblurred_pt_<length>nt.qza
+    Saves qza's if specified. With naming format "deblurred_pt_<length>.qza
     eg. If input is length 100, trim_incr=10 and num_trims=5, post trims to
     lengths 100, 90, 80, 70, 60
 
@@ -229,16 +230,9 @@ def post_trims_art(input_artifact = None, trim_incr = 10,
     for otu in otus:
         print(len(otu))
         if(len(otu) != trim_length):
-            click.echo("Input table reads are not all same length. Invalid")
-            # TODO throw exception
+            raise ValueError("Input table reads are not all same length. Invalid")
             return
 
-    # Calculate actual trim lengths
-    #trim_lengths = []
-    #percent = 100
-    #for i in range(num_trims):
-    #    trim_lengths.append(int(trim_length * (percent/100)))
-    #    percent = percent - trim_incr
     trim_lengths, = calculate_trim_lengths(trim_length, trim_incr, num_trims)
 
     pt_bioms = []
@@ -248,7 +242,7 @@ def post_trims_art(input_artifact = None, trim_incr = 10,
         if(output_fp is not None):
             pt_artifact = Artifact.import_data("FeatureTable[Frequency]",
                                                pt_biom)
-            pt_artifact.save("deblurred_pt_" + l + "nt.qza")
+            pt_artifact.save("deblurred_pt_" + l + ".qza")
 
     return pt_bioms
 
@@ -261,8 +255,29 @@ def post_trims_art(input_artifact = None, trim_incr = 10,
 @click.option('-o', '--output-fp', type=click.Path(file_okay=False),
               required=True,
               help='Path to output tsv files')
-def analysis(input_fp, output_fp):
-    return
+def analysis(input_fp, output_fp = None, trim_incr = 10, num_trims = 5):
+
+    pres = dict()
+    for path in glob.glob(input_fp + "/deblurred_pre_*.qza"):
+        pm = path.replace("_",".")
+        pm = pm.split(".")
+        length = int(pm[len(pm)-2])
+        artifact = Artifact.load(path)
+        pres[length] = artifact
+    pre_artifacts = [pres[x] for x in sorted(pres.keys())]
+
+    posts = dict()
+    for path in glob.glob(input_fp + "/deblurred_pt_*.qza"):
+        pm = path.replace("_",".")
+        pm = pm.split(".")
+        length = int(pm[len(pm)-2])
+        artifact = Artifact.load(path)
+        posts[length] = artifact
+    post_artifacts = [posts[x] for x in sorted(posts.keys())]
+
+    ##Saves qza's if specified. With naming format "deblurred_pre_<length>nt.qza
+    return analysis_art(pre_artifacts, post_artifacts, trim_incr, num_trims,
+                        output_fp)
 
 
 def analysis_art(pre_artifacts, post_artifacts, trim_incr = 10, num_trims = 5,
@@ -362,3 +377,4 @@ def calculate_trim_lengths(length, trim_incr, num_trims):
 # TODO do eg.s in python console format
 # TODO throw exceptions?
 # TODO look @ math behind mantel
+# T
