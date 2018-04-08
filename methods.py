@@ -17,27 +17,32 @@ import numpy as np
 def import_dataset(working_dir_fp, metadata_barcode_column,
                    rev_comp_barcodes_in=False,
                    rev_comp_mapping_barcodes_in=False):
-    """
-    Imports seqs as qiime artifact, demuxes them.
+    """Imports seqs as qiime artifact, demuxes them.
     Requires that fastq.gz files already be in
     working_dir_fp/emp-single-end-seqs and sample-metadata.tsv be in
     working_dir_fp
 
-    :param working_dir_fp: filepath where sequences_url + barcodes_url file are
-                           downloaded to
-                           and put into a directory "emp-single-end-sequences".
-                           Should also contain sample-metadata.tsv.
-                           Ideally, this should be a
-                           mock-<n> directory from when you clone the
-                           mockrobiota github repo
-                           should not end with "/"
-    :param metadata_barcode_column: column header in sample-metadata.tsv that
-                                    holds barcode data
-    :param rev_comp_barcodes_i: param to emp_single for reversing barcode seqs
-    :param rev_comp_mapping_barcodes_i: param to emp_single for reversing
-                                        barcode seqs in metadata
+    Parameters
+    ----------
+    working_dir_fp: str
+        filepath where sequences_url + barcodes_url file are
+        downloaded to and put into a directory "emp-single-end-sequences".
+        Should also contain sample-metadata.tsv. Ideally, this should be a
+        mock-<n> directory from when you clone the mockrobiota github repo
+        should not end with "/"
+    metadata_barcode_column: str
+        column header in sample-metadata.tsv that holds barcode data
+    rev_comp_barcodes_i: bool
+        param to emp_single for reversing barcode seqs
+    rev_comp_mapping_barcodes_i: bool
+        param to emp_single for reversing barcode seqs in metadata
 
-    :return tuple of demuxed seqs, loaded metadata, None if fails
+    Returns
+    -------
+    demuxed seqs,
+    loaded metadata
+    OR
+    None if fails
     """
     print("Importing seq data")
     seqs = Artifact.import_data("EMPSingleEndSequences", working_dir_fp +
@@ -56,15 +61,18 @@ def import_dataset(working_dir_fp, metadata_barcode_column,
 
 
 def do_deblur(demuxed_seqs, pre_trim_length, num_cores = 1):
-    """
-    Given demuxed sequences, quality filter,pre_trims them and returns the result
+    """Given demuxed sequences, quality filter,pre_trims them and returns the result
 
-    :param demuxed_data: qiime artifact of demuxed data
-    :param pre_trim_length: length that we want to trim sequences to before
-        deblur is ran
+    Parameters
+    ----------
+    demuxed_data: qiime2.Artifact
+        demuxed data of type EmpSingleEndSequences
+    pre_trim_length: int
+    length that we want to trim sequences to before deblur is ran
 
-    :return FeatureTable[Frequency] of deblured data. Post-trimmed to length
-    post_trim_length if post_trim_length is not None
+    Returns
+    -------
+    qiime2.Artifact of tpye FeatureTable[Frequency] of deblured data.
     """
     print("Quality filtering (with default params)")
     demuxed_qfiltered, demuxed_qf_stats = q_score(demuxed_seqs)
@@ -79,11 +87,18 @@ def do_deblur(demuxed_seqs, pre_trim_length, num_cores = 1):
 
 
 def post_trim(deblurred_biom, post_trim_length):
-    """
-    Trims a deblurred set of seqs
-    :param deblurred_biom deblurred seqs as biom table
-    :param post_trim_length length to trim to
-    :return trimmed deblurred seqs as BIOM
+    """Trims a deblurred set of seqs
+
+    Parameters
+    ----------
+    deblurred_biom: biom.Table
+        deblurred seqs as biom table
+    post_trim_length: int
+        length to trim to
+
+    Returns
+    -------
+    biom.Table of trimmed,deblurred seqs
     """
     print("Trimming post-demuxed seqs to {:d}".format(post_trim_length))
     post_trimmed_biom = \
@@ -93,14 +108,21 @@ def post_trim(deblurred_biom, post_trim_length):
     return post_trimmed_biom
 
 def get_distance_distribution(pre_table_overlap, post_table_overlap):
-    """
-    Given biom tables of overlapping reads, returns jaccard and bray curtis
+    """Given biom tables of overlapping reads, returns jaccard and bray curtis
     distances between matching reads.
     Two params should have exact same reads
-    :param pre_table_overlap biom table for pre trimmed reads
-    :param post_table_overlap biom table for post trimmed reads
-    :return pandas dataframe with columns ["seq","dist_type","dist"]
-    that hold sequence, type of distance and distance value
+
+    Parameters
+    ----------
+    pre_table_overlap: biom.Table
+        pre trimmed reads
+    post_table_overlap: biom.Table
+        post trimmed reads
+
+    Returns
+    -------
+    pandas.DataFrame with columns ["seq","dist_type","dist"]
+    that hold sequence, type of distance and distance value for otu pair
     """
     distance_functions = [('jaccard', scipy.spatial.distance.jaccard),
                           ('braycurtis', scipy.spatial.distance.braycurtis)]
@@ -125,6 +147,19 @@ def get_distance_distribution(pre_table_overlap, post_table_overlap):
     return results
 
 def get_pairwise_dist_mat(deblur_biom, dist_type):
+    """Returns pairwise distance matrix for deblurred seqs
+
+    Parameters
+    ----------
+    deblur_biom: biom.Table
+        Sequences we want pairwise distances (by sample) for
+    dist_type: str
+        Distance metric we want. Usually "jaccard" or "braycurtis"
+
+    Returns
+    -------
+    numpy matrix of pairwise distances
+    """
     if(dist_type == "jaccard"):
         deblur_biom = deblur_biom.pa(inplace=False)
 
@@ -135,14 +170,20 @@ def get_pairwise_dist_mat(deblur_biom, dist_type):
 
 
 def get_overlap_tables(pre, post):
-    """
-    Takes in biom tables and returns the part of them that overlap in
+    """Takes in biom tables and returns the part of them that overlap in
     same order
 
-    :param pre biom table of pre-trimmed deblurred seqs
-    :param post biom table of post-trimmed deblurred seqs
-    :return tuple of biom tables (pre_o,post_o) where each table only holds
-            reads found in pre and post arguments, in same order as post
+    Parameters
+    ----------
+    pre: biom.Table
+        pre-trimmed deblurred seqs
+    post: biom.Table
+        post-trimmed deblurred seqs
+
+    Returns
+    -------
+    biom.Table of pre reads that overlap with post
+    biom.Table of post reads that overlap with pre
     """
     pre_ids = pre.ids(axis='observation')
     post_ids = post.ids(axis='observation')
@@ -163,16 +204,16 @@ def get_overlap_tables(pre, post):
 
     return (pre_table_overlap, post_table_overlap)
 
-def get_pre_post_distances(pre_bioms, post_bioms, trim_lengths):
+def get_pre_post_distance_data(pre_bioms, post_bioms, trim_lengths):
     """For each otu, get distance between the otu in pre and post. Returns
     all distances in a pandas dataframe. Does jaccard and bray curtis
 
     Parameters
     ----------
-    pre_bioms: array_like of qiime2.Artifacts type FeatureTable[Frequency]
+    pre_bioms: array_like of biom.Table
         pre-trimmed Artifacts in descending trim length order. Should be in
         same order as post_bioms
-    post_bioms: array_like of qiime2 artifacts
+    post_bioms: array_like of biom.Table
         post-trimmed Artifacts in descending trim length order. Should be in
         same order as pre_bioms
     trim_lengths: array_like
@@ -181,6 +222,8 @@ def get_pre_post_distances(pre_bioms, post_bioms, trim_lengths):
     Returns
     -------
     Pandas dataframe that holds results for each pre-post mantel test
+    array_like of biom.Table of overlapping otu's found in pre
+    array_like of biom.Table of overlapping otu's found in post
     """
     if(not (len(pre_bioms) == len(post_bioms) == len(trim_lengths))):
         raise ValueError("Length of 3 arguments lists should be same\n"
@@ -204,19 +247,20 @@ def get_pre_post_distances(pre_bioms, post_bioms, trim_lengths):
         dists["length"] = trim_lengths[i]
         all_dists = all_dists.append(dists)
 
-    return all_dists
+    # TODO unit tests for pre_overlaps, post_overlaps
+    return all_dists, pre_overlaps, post_overlaps
 
-def get_pairwise_diversity(pre_bioms, post_bioms, trim_lengths):
+def get_pairwise_diversity_data(pre_bioms, post_bioms, trim_lengths):
     """For each pre-post pair, gets the pairwise distance matrix of each
     sequence set and does a mantel test between pre and post pariwise distance
     matrices using both jaccard and bray-curtis metrics
 
     Parameters
     ----------
-    pre_bioms: array_like of qiime2.Artifacts type FeatureTable[Frequency]
+    pre_bioms: array_like of biom.Table
         pre-trimmed Artifacts in descending trim length order. Should be in
         same order as post_bioms
-    post_bioms: array_like of qiime2 artifacts
+    post_bioms: array_like of biom.Table
         post-trimmed Artifacts in descending trim length order. Should be in
         same order as pre_bioms
     trim_lengths: array_like
@@ -253,11 +297,101 @@ def get_pairwise_diversity(pre_bioms, post_bioms, trim_lengths):
     pairwise_diversity["r_sq"] = pairwise_diversity["r"]**2
     return pairwise_diversity
 
-def get_shortest_seq(demuxed):
+def get_count_data(pre_bioms, pre_overlaps, post_bioms, post_overlaps,
+                  trim_lengths):
     """
-    Given a qiime artifact of demuxed reads, returns the length of the read
-    :param qiime2 artifact of demuxed reads
-    :return length of shortest read
+    Parameters
+    ----------
+    pre_bioms: array_like of biom.Table
+        pre-trimmed Artifacts in descending trim length order. Should be in
+        same order as post_bioms
+    pre_overlaps: array_like of biom.Table
+        biom.Table of pre data after pre/post intersection. Same length as
+        post_overlaps
+    post_bioms: array_like of biom.Table
+        post-trimmed Artifacts in descending trim length order. Should be in
+        same order as pre_bioms
+    post_overlaps: array_like of biom.Table
+        biom.Table of post data after pre/post intersection. Same length as
+        pre_overlaps
+    trim_lengths: array_like
+        Trim lengths in descending order, should correspond to other arguments
+
+    Returns
+    -------
+    pandas DataFrame with columns:
+    "trim_length" : trim_length,
+    "sotu_overlap_count" : num overlapping sOTUs,
+    "sotu_unique_pre" : number of sOTUs unique to pre,
+    "sotu_unique_post" : number of sOTUs unique to post,
+    "num_samples_pre" : num samples in pre_trim,
+    "num_samples_post" : num samples in post_trim,
+    "change_num_samples" : change in number of samples,
+
+    pandas DataFrame with columns:
+    "trim_length",
+    <a column for each sample with same sample name as input">,
+    values are change in reads per sample for each trim lenght, pre-post
+    """
+    if(not (len(pre_overlaps) == len(post_overlaps) == len(trim_lengths))):
+        raise ValueError("Length of 3 arguments lists should be same\n"
+                         "pre: {}, post: {}, lengths: {}"
+                         .format(len(pre_overlaps),
+                                 len(post_overlaps),
+                                 len(trim_lengths)))
+
+    count_data = pd.DataFrame()
+    count_data["trim_length"] = trim_lengths
+    count_data["sOTU_overlap_count"] = \
+        [num_sOTUs(table) for table in pre_overlaps]
+    count_data["sOTU_unique_pre"] = \
+        [num_sOTUs(pre_bioms[i]) - num_sOTUs(pre_overlaps[i])
+         for i in range(len(pre_overlaps))]
+    count_data["sOTU_unique_post"] = \
+        [num_sOTUs(post_bioms[i]) - num_sOTUs(post_overlaps[i])
+         for i in range(len(pre_overlaps))]
+
+    # TODO get rid of this because its always 0?
+    #count_data["num_samples_pre"] = [num_samples(table) for table in pre_bioms]
+    #count_data["num_samples_post"] = [num_samples(table) for table in post_bioms]
+    #count_data["change_num_samples"] = count_data["num_samples_pre"] - \
+    #                                   count_data["num_samples_post"]
+
+    change_reads_per_sample = pd.DataFrame()
+    change_reads_per_sample["trim_length"] = trim_lengths
+    pre_sums = pd.DataFrame([total_read_counts(tbl) for tbl in pre_bioms],
+                            columns = pre_bioms[0].ids(axis="sample"))
+    post_sums = pd.DataFrame([total_read_counts(tbl) for tbl in post_bioms],
+                             columns = post_bioms[0].ids(axis="sample"))
+    delta = pre_sums - post_sums
+    change_reads_per_sample = \
+        pd.concat([change_reads_per_sample, delta], axis=1)
+
+    # TODO unit tests for this!!
+    return count_data, change_reads_per_sample
+
+def num_sOTUs(biom_table):
+    """Returns number of sOTUs in a biom.Table"""
+    return biom_table.length(axis="observation")
+
+def num_samples(biom_table):
+    return biom_table.length(axis="sample")
+
+def total_read_counts(biom_table):
+    """Returns a list read counts per sample for each sample in biom_table"""
+    return biom_table.sum(axis="sample")
+
+def get_shortest_seq(demuxed):
+    """Given a qiime artifact of demuxed reads, returns the length of the read
+
+    Parameters
+    ----------
+    demuxed: qiime2.Artifact
+        demuxed reads
+
+    Returns
+    -------
+    int length of shortest read
     """
     directory = demuxed.view(SingleLanePerSampleSingleEndFastqDirFmt)
 
@@ -268,15 +402,25 @@ def get_shortest_seq(demuxed):
 
     return min(lengths.values())
 
+###########################################################
 # The following methods are specific to mockrobiota dataset
+###########################################################
 def get_dl_urls(dataset_metadata_url, working_dir_fp):
     """
-    :param dataset_metadata_url is url where we can download dataset metadata like this
-    https://github.com/caporaso-lab/mockrobiota/blob/master/data/mock-6/dataset-metadata.tsv
-    :param working_dir_fp: filepath where sequences_url + barcodes_url file are downloaded to
-                           and put into a directory "emp-single-end-sequences".
-                           Should not end with "/"
-    :return tuple of 2 strings, URLs of sequence and index files respectively
+    Parameters
+    ----------
+    dataset_metadata_url: str
+        url where we can download dataset metadata like this
+        https://github.com/caporaso-lab/mockrobiota/blob/master/data/mock-6/dataset-metadata.tsv
+    working_dir_fp: str
+        filepath where sequences_url + barcodes_url file are downloaded to
+        and put into a directory "emp-single-end-sequences".
+        Should not end with "/"
+
+    Returns
+    -------
+    str url to download sequences from
+    str url to download barcodes from
     """
     wget.download(dataset_metadata_url, working_dir_fp)
     metadata_fp = working_dir_fp  + "/" + os.path.basename(dataset_metadata_url)
@@ -289,18 +433,23 @@ def get_dl_urls(dataset_metadata_url, working_dir_fp):
 
 def download_mock_dataset(working_dir_fp, sequences_url, barcodes_url,
                           metadata_url):
-    """
-    Downloads all the files we need from a mock dataset setup so qiime2 can
+    """Downloads all the files we need from a mock dataset setup so qiime2 can
     work with them. Puts all files inside
     working_dir_fp + "/emp-single-end-sequences"
 
-    :param working_dir_fp: filepath where sequences_url + barcodes_url file are downloaded to
-                           and put into a directory "emp-single-end-sequences". Ideally, this should be a
-                           mock-<n> directory from when you clone the mockrobiota github repo
-                           should not end with "/"
-    :param sequences_url: URL from which sequences are downloaded from using wget
-    :param barcodes_url: URL from which barcodes are downloaded from using wget
-    :param metadata_url: URL from which we get sample-metadata.tsv file
+    Parameters
+    ----------
+    working_dir_fp: str
+        filepath where sequences_url + barcodes_url file are downloaded to
+        and put into a directory "emp-single-end-sequences". Ideally, a
+        mock-<n> directory from when you clone the mockrobiota github repo
+        should not end with "/"
+    sequences_url: str
+        URL from which sequences are downloaded from using wget
+    barcodes_url: str
+        URL from which barcodes are downloaded from using wget
+    metadata_url: str
+        URL from which we get sample-metadata.tsv file
     """
     # setup files so qiime can work with them
     output_dir = working_dir_fp + "/emp-single-end-sequences"

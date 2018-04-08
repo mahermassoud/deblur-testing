@@ -283,62 +283,38 @@ def analysis_art(pre_artifacts, post_artifacts, trim_incr = 10, num_trims = 5,
         Number of different lengths to trim to. Each trim_incr % less.
         Should correspond to input artifacts
     output_fp: str
-        Path to directory which output tsv's are saved
+        Path to directory which output tsv's are saved, should not end with /
 
     Returns
     -------
-    list of pandas dataframes
+    pandas DataFrame of pariwise mantel test data
+    pandas DataFrame of distance between pre and post matching otus
+    pandas DataFrame of sOTU and sample counts
+    pandas DataFrame of changes in reads per sample from pre to post (pre-post)
     """
-    if(len(pre_artifacts) != len(post_artifacts)):
-        raise ValueError("Length of pre, post artifact lists should be same\n"
-                         "pre: {}, post: {}".format(len(pre_artifacts),
-                                                    len(post_artifacts)))
+    pre_bioms = [art.view(biom.Table,) for art in pre_artifacts]
+    post_bioms = [art.view(biom.Table) for art in post_artifacts]
 
-    # Get trim lengths
-    a_biom = pre_artifacts[0].view(biom.Table)
-    otus = a_biom.ids(axis="observation")
-    trim_length = len(otus[0])
-    trim_lengths, trim_percents = \
-        calculate_trim_lengths(trim_length, trim_incr, num_trims)
+    otus = pre_bioms.ids(axis="observation")
+    length = len(otus[0])
+    trim_lengths = calculate_trim_lengths(length, trim_incr,num_trims)
 
-    pre_overlaps = []
-    post_overlaps = []
-    all_dists = pd.DataFrame()
-    cols = ["trim_length", "dist_type", "r", "pval", "nsamples"]
-    pairwise_diversity = pd.DataFrame(columns=cols)
-    for i in range(len(pre_artifacts)):
-        # pre-post distances
-        pre_overlap_biom, post_overlap_biom = \
-            methods.get_overlap_tables(pre_artifacts[i], post_artifacts[i])
+    pairwise_mantel = methods.get_pairwise_diversity_data(pre_bioms, post_bioms,
+                                                          trim_lengths)
+    pre_post, pre_overlaps, post_overlaps = \
+        methods.get_pre_post_distance_data(pre_bioms, post_bioms, trim_lengths)
 
-        pre_overlaps.append(pre_overlap_biom)
-        post_overlaps.append(post_overlap_biom)
+    counts, read_changes = methods.get_count_data(pre_bioms, pre_overlaps,
+                                                  post_bioms, post_overlaps,
+                                                  trim_lengths)
 
-        dists = methods.get_distance_distribution(pre_overlap_biom,
-                                                  post_overlap_biom)
-        dists["length"] = trim_lengths[i]
-        dists["percent_max"] = trim_percents[i]
-        all_dists = all_dists.append(dists)
+    if(output_fp is not None):
+        pairwise_mantel.to_csv(output_fp + "/pairwise_mantel.csv")
+        pre_post.to_csv(output_fp + "/pre_post.csv")
+        counts.to_csv(output_fp + "/counts.csv")
+        read_changes.to_csv(output_fp + "/read_changes.csv")
 
-        # pairwise distance matrices
-        pre_biom = pre_artifacts[i].view(biom.Table)
-        post_biom = post_artifacts[i].view(biom.Table)
-
-        pre_d_j = methods.get_pairwise_dist_mat(pre_biom, "jaccard")
-        post_d_j = methods.get_pairwise_dist_mat(post_biom, "jaccard")
-        r, p, nsamp = mantel(pre_d_j, post_d_j)
-        pairwise_diversity = pairwise_diversity.append(dict(zip(cols, [trim_length, "jaccard", r, p, nsamp])),
-                                                       ignore_index=True)
-        pre_d_bc = methods.get_pairwise_dist_mat(pre_biom, "braycurtis")
-        post_d_bc = methods.get_pairwise_dist_mat(post_biom, "braycurtis")
-        r, p, nsamp = mantel(pre_d_bc, post_d_bc)
-        pairwise_diversity = pairwise_diversity.append(dict(zip(cols, [trim_length, "braycurtis", r, p, nsamp])),
-                                                       ignore_index=True)
-
-    pairwise_diversity["r_sq"] = pairwise_diversity["r"]**2
-
-
-
+    return pairwise_mantel, pre_post, counts, read_changes
 
 def calculate_trim_lengths(length, trim_incr, num_trims):
     """Returns list of lengths we will trim to. Each trim_incr percent less
@@ -370,68 +346,6 @@ def calculate_trim_lengths(length, trim_incr, num_trims):
 
     return trim_lengths, percents
 
-# """
-#    pre_pt_table = pd.DataFrame()
-#pre_pt_table["pre"] = pre_trims
-#pre_pt_table["post"] = post_trims
-#pre_pt_table["length"] = TRIM_LENGTHS
-#
-#dists_overlaps = pd.DataFrame()
-#overlap_bioms = dict()
-#pre_overlaps = []
-#post_overlaps = []
-#for i in range(pre_pt_table.shape[0]):
-#    pre_overlap_biom, post_overlap_biom = \
-#        get_overlap_tables(pre_pt_table.iloc[i,0].view(biom.Table),
-#                           pre_pt_table.iloc[i,1].view(biom.Table))
-#    pre_overlaps.append(pre_overlap_biom)
-#    post_overlaps.append(post_overlap_biom)
-#
-#    dists = get_distance_distribution(pre_overlap_biom, post_overlap_biom)
-#    dists["length"] = pre_pt_table.iloc[i,2]
-#    dists_overlaps = dists_overlaps.append(dists)
-#    overlap_bioms[pre_pt_table.iloc[i,2]] = pre_overlap_biom # TODO look at this
-#
-#pre_pt_table["pre_overlap"] = pre_overlaps
-#pre_pt_table["post_overlap"] = post_overlaps
-#"""
-#
-#
-#"""
-##### Inputs
-#- all pre-trim and post-trim qzas OR python artifacts
-#- output dir
-#
-##### Outputs
-#- tsv distances between pre, post otus
-#- tsv for sOTU counts and pre - post, include percentages col
-#- tsv for mantel test
-#- all exported to output_dir/data
-#
-##### Pseudocode
-#
-#```
-#if(using qzas)
-#    load all of them to python artifacts
-#
-## Distance pre to post plots
-## Histograms of BC + Jaccard
-## Box plots of distributions by trim length
-## Histograms for each trim length
-#Make single pandas dataframe
-#export it to csv
-
-# sOTU counts by trim length
-# Pre - post reads per sample counts
-#Do as percentages, put in pandas dataframe
-#export as tsv
-
-
-# Pairwise distance Mantel test
-# R squared vs. trim length
-#Export a csv
-#```
-#"""
 
 # TODO Shell script for integration testing-- See if working TOGETHER
 # MIGHT want to normalize data before bray curtis,

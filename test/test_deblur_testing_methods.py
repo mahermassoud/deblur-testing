@@ -75,8 +75,9 @@ class TestPairwiseDist(TestCase):
         assert_array_almost_equal(self.bc_exp, obs.data)
 
     def test_get_pairwise_diversity(self):
-        #get_pairwise_diversity([jaccard])
-        #TODO this
+        #get_pairwise_diversity_data([jaccard])
+        #TODO
+        return
 
 
 class TestPrePostDist(TestCase):
@@ -133,16 +134,16 @@ class TestPrePostDist(TestCase):
         assert_frame_equal(self.exp_100, obs)
 
     def test_get_pre_post_distances(self):
-        obs = get_pre_post_distances([self.pre_100, self.pre_50],
-                                     [self.post_100, self.post_50],
-                                     [100, 50])
+        obs = get_pre_post_distance_data([self.pre_100, self.pre_50],
+                                         [self.post_100, self.post_50],
+                                         [100, 50])
         obs.index = list(range(obs.shape[0]))
         assert_frame_equal(self.exp_both, obs)
 
     def test_get_pre_post_distances_fail(self):
         with self.assertRaises(ValueError):
-              get_pre_post_distances([self.pre_100, self.pre_50],
-                         [self.post_100, self.post_50], [100, 50, 1])
+              get_pre_post_distance_data([self.pre_100, self.pre_50],
+                                         [self.post_100, self.post_50], [100, 50, 1])
 
 class TestPostTrim(TestCase):
     def setUp(self):
@@ -204,6 +205,44 @@ class TestGetOverlap(TestCase):
         obs1, obs2 = get_overlap_tables(self.none, self.some1)
         self.assertTrue(len(obs1.ids(axis="observation")) == 0)
         self.assertTrue(len(obs2.ids(axis="observation")) == 0)
+
+class TestGetCountData(TestCase):
+    def setUp(self):
+        self.pre1 = biom.Table(np.array([[0,10,20,30],[40,20,10,30],[10,15,12,11],[7,8,8,9]]),
+                                ['AATT', 'AATG', 'ATGC','AATC'], ['S1', 'S2', 'S3', 'S4'])
+        self.pre2 = biom.Table(np.array([[0,11,21,31],[41,21,11,31],[11,16,13,12],[8,9,9,10]]),
+                               ['AATT', 'AATG', 'ATGC','AATC'], ['S1', 'S2', 'S3', 'S4'])
+        self.post1 = biom.Table(np.array([[0,1,2,3],[4,2,1,3],[1,1,1,1],[8,9,9,10]]),
+                               ['AATT', 'ATTG', 'ATGC','AATC'], ['S1', 'S2', 'S3', 'S4'])
+        self.post2 = biom.Table(np.array([[0,1,2,3],[4,2,1,3],[1,1,1,1],[8,9,9,10]]),
+                                ['ACCT', 'TATG', 'TCCC','ACCC'], ['S1', 'S2', 'S3', 'S4'])
+
+        self.pre_ov1, self.post_ov1 = get_overlap_tables(self.pre1, self.post1)
+        self.pre_ov2, self.post_ov2 = get_overlap_tables(self.pre2, self.post2)
+
+        self.pre_bioms = [self.pre1, self.pre2]
+        self.post_bioms = [self.post1, self.post2]
+        self.pre_ov = [self.pre_ov1, self.pre_ov2]
+        self.post_ov = [self.post_ov1, self.post_ov2]
+        self.lengths = [1,2]
+
+        self.exp_cdata = pd.DataFrame(columns = ["trim_length",
+                                                "sOTU_overlap_count",
+                                                "sOTU_unique_pre",
+                                                "sOTU_unique_post"],
+                                      data = np.array([[1,3,1,1],
+                                                       [2,0,4,4]]))
+        self.exp_rps = pd.DataFrame(columns = ['trim_length','S1', 'S2', 'S3', 'S4'],
+                                    data = np.array([[1,44,40,37,63],
+                                                     [2,47,44,41,67]]))
+
+    def test_get_count_data(self):
+        obs_cdata, obs_rps = get_count_data(self.pre_bioms, self.pre_ov,
+                                            self.post_bioms, self.post_ov,
+                                            self.lengths)
+
+        assert_frame_equal(self.exp_cdata, obs_cdata)
+        assert_frame_equal(self.exp_rps, obs_rps, check_dtype=False)
 
 # Tests for methods specific to mockrobiota
 class TestMockMethods(TestCase):
