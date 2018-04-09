@@ -9,11 +9,11 @@ setup(
     ],
     entry_points='''
         [console_scripts]
-        rdemux=script:demux
-        rdeblur=script:pre_trims
-        rpost_trim=script:post_trims
-        ranalysis=script:analysis
-        rplot=script:do_plots
+        rdemux=scripts:demux
+        rdeblur=scripts:pre_trims
+        rpost_trim=scripts:post_trims
+        ranalysis=scripts:analysis
+        rplot=scripts:do_plots
     ''',
 )
 

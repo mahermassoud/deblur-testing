@@ -340,6 +340,7 @@ def analysis_art(pre_artifacts, post_artifacts, trim_incr = 10, num_trims = 5,
         pre_post.to_csv(output_fp + "/pre_post.csv", index=False)
         counts.to_csv(output_fp + "/counts.csv", index=False)
         read_changes.to_csv(output_fp + "/read_changes.csv", index=False)
+        # TODO saves to wd regardless of -o
 
     return pairwise_mantel, pre_post, counts, read_changes
 
@@ -468,4 +469,3 @@ def calculate_trim_lengths(length, trim_incr, num_trims):
 # TODO do eg.s in python console format
 # TODO throw exceptions?
 # TODO look @ math behind mantel
-# T
