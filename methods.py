@@ -77,7 +77,7 @@ def do_deblur(demuxed_seqs, pre_trim_length, num_cores = 1):
     print("Quality filtering (with default params)")
     demuxed_qfiltered, demuxed_qf_stats = q_score(demuxed_seqs)
 
-    print("Deblur-ing with trim length {:d}".format(pre_trim_length))
+    print("Deblur-ing with trim length {}".format(str(pre_trim_length)))
     deblurred, repseq, deblur_stats = \
         denoise_16S(demuxed_qfiltered, pre_trim_length,
                     hashed_feature_ids = False, jobs_to_start = num_cores)
@@ -187,7 +187,7 @@ def get_overlap_tables(pre, post):
     post_ids = post.ids(axis='observation')
 
     features_in_common = set(pre_ids) & set(post_ids)
-    print(str(len(features_in_common)) + " reads in common when intersecting")
+    #print(str(len(features_in_common)) + " reads in common when intersecting")
     pre_table_overlap = pre.filter(features_in_common, axis='observation',
                                    inplace=False)
     post_table_overlap = post.filter(features_in_common, axis='observation',
@@ -357,9 +357,6 @@ def get_count_data(pre_bioms, pre_overlaps, post_bioms, post_overlaps,
 
     change_reads_per_sample = pd.DataFrame()
     change_reads_per_sample["trim_length"] = trim_lengths
-    change_reads_per_sample.index = trim_lengths
-    change_reads_per_sample = change_reads_per_sample.drop(["trim_length"],
-                                                           axis=1)
     pre_sums = pd.DataFrame([total_read_counts(tbl) for tbl in pre_bioms],
                             columns = pre_bioms[0].ids(axis="sample"))
     post_sums = pd.DataFrame([total_read_counts(tbl) for tbl in post_bioms],

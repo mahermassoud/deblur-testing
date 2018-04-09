@@ -154,7 +154,7 @@ def pre_trims_art(input_artifact, trim_length = 100, trim_incr = 10,
         click.echo("Determining max possible trim length")
         trim_length = methods.get_shortest_seq(input_artifact)
 
-    trim_lengths = calculate_trim_lengths(trim_length, trim_incr, num_trims)
+    trim_lengths, percents = calculate_trim_lengths(trim_length, trim_incr, num_trims)
 
     deblurreds = []
     for l in trim_lengths:
@@ -191,7 +191,7 @@ def post_trims(input_fp, trim_incr = 10,
     num_trims: int, optional
         Number of different lengths to trim to. Each trim_incr % less.
     output_fp: path, optional
-        Path to output deblurred qza files
+        Path to output deblurred qza f2les
 
     Returns
     -------
@@ -232,12 +232,11 @@ def post_trims_art(input_artifact = None, trim_incr = 10,
     otus = input_biom.ids(axis="observation")
     trim_length = len(otus[0])
     for otu in otus:
-        print(len(otu))
         if(len(otu) != trim_length):
             raise ValueError("Input table reads are not all same length. Invalid")
             return
 
-    trim_lengths, = calculate_trim_lengths(trim_length, trim_incr, num_trims)
+    trim_lengths, percent = calculate_trim_lengths(trim_length, trim_incr, num_trims)
 
     pt_bioms = []
     for l in trim_lengths:
@@ -246,7 +245,7 @@ def post_trims_art(input_artifact = None, trim_incr = 10,
         if(output_fp is not None):
             pt_artifact = Artifact.import_data("FeatureTable[Frequency]",
                                                pt_biom)
-            pt_artifact.save("deblurred_pt_" + l + ".qza")
+            pt_artifact.save("deblurred_pt_" + str(l) + ".qza")
 
     return pt_bioms
 
@@ -337,10 +336,10 @@ def analysis_art(pre_artifacts, post_artifacts, trim_incr = 10, num_trims = 5,
                                                   trim_lengths)
 
     if(output_fp is not None):
-        pairwise_mantel.to_csv(output_fp + "/pairwise_mantel.csv")
-        pre_post.to_csv(output_fp + "/pre_post.csv")
-        counts.to_csv(output_fp + "/counts.csv")
-        read_changes.to_csv(output_fp + "/read_changes.csv")
+        pairwise_mantel.to_csv(output_fp + "/pairwise_mantel.csv", index=False)
+        pre_post.to_csv(output_fp + "/pre_post.csv", index=False)
+        counts.to_csv(output_fp + "/counts.csv", index=False)
+        read_changes.to_csv(output_fp + "/read_changes.csv", index=False)
 
     return pairwise_mantel, pre_post, counts, read_changes
 
@@ -389,10 +388,17 @@ def plot_pd(pairwise_mantel, pre_post, counts, read_changes, output_fp = None):
                              data=pairwise_mantel, ci=None, fit_reg=False)
     mantel_plot.set(xlabel="Trim Length")
 
+    if output_fp is not None:
+        plt.savefig(output_fp + "/pairwise_mantel.png")
+    plt.figure()
+
     pp_plot = sns.boxplot(x="length", y="dist", data=pre_post, hue="dist_type")
     pp_plot.set(xlabel="trim_length", title="Distribution of distances between matching pre/post otus")
 
-    c_plot = plt.figure()
+    if output_fp is not None:
+        plt.savefig(output_fp + "/pre_post.png")
+    plt.figure()
+
     plt.plot(counts["trim_length"], counts["sOTU_overlap_count"])
     plt.plot(counts["trim_length"], counts["sOTU_unique_pre"])
     plt.plot(counts["trim_length"], counts["sOTU_unique_post"])
@@ -400,20 +406,21 @@ def plot_pd(pairwise_mantel, pre_post, counts, read_changes, output_fp = None):
     plt.title("sOTU counts")
     plt.xlabel("Trim Length")
 
-    rc_plot = plt.figure()
-    for colname in read_changes.columns:
-        plt.plot(read_changes.index, read_changes[colname])
-    plt.legend(read_changes.columns, loc='best')
+    if output_fp is not None:
+        plt.savefig(output_fp + "/counts.png")
+    plt.figure()
+
+    cols = list(read_changes.columns)
+    for colname in read_changes.columns[1:]:
+        plt.plot(read_changes["trim_length"], read_changes[colname])
+    plt.legend(read_changes.columns[1:], loc='best')
     plt.title("pre - post: reads-per-sample count")
     plt.xlabel("Trim Length")
 
     if output_fp is not None:
-        pp_plot.figure.savefig("pre_post.png")
-        c_plot.savefig("counts.png")
-        rc_plot.savefig("read_changes.png")
-        mantel_plot.savefig("pairwise_mantel.png")
+        plt.savefig(output_fp + "/read_changes.png")
 
-    return mantel_plot, pp_plot, c_plot, rc_plot
+    #return mantel_plot, pp_plot, c_plot, rc_plot
 
 def calculate_trim_lengths(length, trim_incr, num_trims):
     """Returns list of lengths we will trim to. Each trim_incr percent less

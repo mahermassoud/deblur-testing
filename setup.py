@@ -13,6 +13,7 @@ setup(
         rdeblur=script:pre_trims
         rpost_trim=script:post_trims
         ranalysis=script:analysis
+        rplot=script:do_plots
     ''',
 )
 
