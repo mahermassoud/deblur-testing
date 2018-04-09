@@ -135,8 +135,6 @@ def get_distance_distribution(pre_table_overlap, post_table_overlap):
             if(fname == "jaccard"):
                 a = pre_pa.data(obs, axis='observation', dense=True)
                 b = post_pa.data(obs, axis='observation', dense=True)
-                print(obs)
-                print("jaccard between " + str(a) + " and " + str(b) + " f=" + str(f(a,b)))
             else:
                 a = pre_table_overlap.data(obs, axis='observation', dense=True)
                 b = post_table_overlap.data(obs, axis='observation',
@@ -359,6 +357,9 @@ def get_count_data(pre_bioms, pre_overlaps, post_bioms, post_overlaps,
 
     change_reads_per_sample = pd.DataFrame()
     change_reads_per_sample["trim_length"] = trim_lengths
+    change_reads_per_sample.index = trim_lengths
+    change_reads_per_sample = change_reads_per_sample.drop(["trim_length"],
+                                                           axis=1)
     pre_sums = pd.DataFrame([total_read_counts(tbl) for tbl in pre_bioms],
                             columns = pre_bioms[0].ids(axis="sample"))
     post_sums = pd.DataFrame([total_read_counts(tbl) for tbl in post_bioms],
