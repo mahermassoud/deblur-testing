@@ -465,7 +465,6 @@ def calculate_trim_lengths(length, trim_incr, num_trims):
 # TODO more testing!!!!
 # TODO consistent with ' vs "
 # TODO use click groups
-# TODO ask dan abount seperation of concerns
 # TODO do eg.s in python console format
 # TODO throw exceptions?
 # TODO look @ math behind mantel
