@@ -54,15 +54,14 @@ def demux(input_fp, metadata, metadata_bc_col, rev_bc, rev_map_bc, output_fp):
         Associated metadata
     """
     if(input_fp is None or metadata is None or metadata_bc_col is None):
-        click.echo("Incorrect. Run \'rdemux --help\' flag to see correct usage")
-        #TODO change so it tells you whats wrong
+        click.echo("Run \'rdemux --help\' flag to see correct usage")
         return
 
     click.echo("Importing seq data from " + input_fp)
     art = Artifact.import_data("EMPSingleEndSequences", input_fp)
 
     print("Loading metadata from " + metadata)
-    barcode_metadata = Metadata.load(metadata) # TODO exception catching?
+    barcode_metadata = Metadata.load(metadata)
 
     print("Demuxing")
     demux, = emp_single(art,
@@ -76,7 +75,6 @@ def demux(input_fp, metadata, metadata_bc_col, rev_bc, rev_map_bc, output_fp):
         demux.save(output_fp)
 
     return demux, barcode_metadata
-    # TODO issues testing this one!
 
 @click.command()
 @click.option('-i', '--input-fp',
@@ -165,43 +163,28 @@ def pre_trims_art(input_artifact, trim_length= 100, trim_incr = 10,
     return deblurreds
 
 @click.command()
-@click.option("-i","--input-fp", type=click.Path(exists=True), required=True,
+@click.option("-i","--input-fp", type=click.Path(exists=True, dir_okay=False),
+              required=True,
               help="Path to deblurred qza that we are post-trimming")
 @click.option('--trim-incr', type=click.INT, default=10,
               help='Percent increment amount for different trim lengths, default 10%')
 @click.option('-n', '--num-trims', type=click.INT, default=5,
               help='Number of lengths to trim to, default 5')
-@click.option('-o', '--output-fp', type=click.Path(), default = None,
+@click.option('-cf', '--clps-fp', type=click.Path(), default="collapse.csv",
+              help="Output path for collapse data tsv file")
+@click.option('-o', '--output-fp', type=click.Path(dir_okay=False), default = None,
               help='Path to output post-trimmed qza files, optional')
-def post_trims(input_fp, trim_incr, num_trims, output_fp):
-    """Post trims to various specified lengths.
-    Saves qza's if specified. With naming format "deblurred_pt_<length>.qza
-    eg. If input is length 100, trim_incr=10 and num_trims=5, post trims to
-    lengths 100, 90, 80, 70, 60
-
-    Parameters
-    ----------
-    input_fp: str
-        Path to qza of demuxed sequences. Either this or input_artifact
-        must be supplied.
-    trim_incr: int, optional
-        Percent amount to decrement by.
-    num_trims: int, optional
-        Number of different lengths to trim to. Each trim_incr % less.
-    output_fp: path, optional
-        Path to output deblurred qza f2les
-
-    Returns
-    -------
-    list of length trim_lengths of post_trimmed seqs as biom tables
-    """
+def post_trims(input_fp, trim_incr, num_trims, clps_fp, output_fp):
     click.echo("Importing seq data from " + input_fp)
     input_artifact = Artifact.load(input_fp)
 
-    return post_trims_art(input_artifact, trim_incr, num_trims, output_fp)
+    print(input_fp)
+    print(input_artifact)
+    return post_trims_art(clps_fp, input_artifact, trim_incr, num_trims,
+                          output_fp)
 
 
-def post_trims_art(input_artifact = None, trim_incr = 10,
+def post_trims_art(clps_fp, input_artifact = None, trim_incr = 10,
                num_trims = 5, output_fp = None):
     """Post trims to various specified lengths.
     Saves qza's if specified. With naming format "deblurred_pt_<length>.qza
@@ -210,6 +193,8 @@ def post_trims_art(input_artifact = None, trim_incr = 10,
 
     Parameters
     ----------
+    clps_fp: str
+        Path to where we write out collapse data file
     input_fp: str
         Path to qza of demuxed sequences. Either this or input_artifact
         must be supplied.
@@ -226,6 +211,7 @@ def post_trims_art(input_artifact = None, trim_incr = 10,
     -------
     list of length trim_lengths of post_trimmed seqs as biom tables
     """
+    print(input_artifact)
     input_biom = input_artifact.view(biom.Table)
     otus = input_biom.ids(axis="observation")
     trim_length = len(otus[0])
@@ -245,12 +231,15 @@ def post_trims_art(input_artifact = None, trim_incr = 10,
                                                pt_biom)
             pt_artifact.save("deblurred_pt_" + str(l) + ".qza")
 
+    clps = methods.get_collapse_counts(pt_bioms)
+    clps.to_csv(clps_fp, index=False)
+
     return pt_bioms
 
 @click.command()
 @click.option("-i","--input-fp", type=click.Path(exists=True, file_okay=False),
               required=True,
-              help="Path to directory holding pre and post qza's. In naming " #TODO
+              help="Path to directory holding pre and post qza's. In naming "
               "format output by post_trims and pre_trims. Required that each "
               "post-trim has corresponding pre-trim")
 @click.option('-o', '--output-fp',type=click.Path(file_okay=False,exists=True),
@@ -332,12 +321,11 @@ def analysis_art(pre_artifacts, post_artifacts, trim_incr = 10, num_trims = 5,
                                                   post_bioms, post_overlaps,
                                                   trim_lengths)
 
-    if(output_fp is not None):
+    if(output_fp is None):
         pairwise_mantel.to_csv(output_fp + "/pairwise_mantel.csv", index=False)
         pre_post.to_csv(output_fp + "/pre_post.csv", index=False)
         counts.to_csv(output_fp + "/counts.csv", index=False)
         read_changes.to_csv(output_fp + "/read_changes.csv", index=False)
-        # TODO saves to wd regardless of -o
 
     return pairwise_mantel, pre_post, counts, read_changes
 
@@ -348,17 +336,6 @@ def analysis_art(pre_artifacts, post_artifacts, trim_incr = 10, num_trims = 5,
 @click.option('-o', '--output-fp',type=click.Path(file_okay=False,exists=True),
               default = None, required=False, help='Path to output csv files')
 def do_plots(input_fp, output_fp):
-    """Plots data generated by analysis()
-
-    Parameters
-    ----------
-    input_fp: str
-        path to directory we find all the data at in naming format
-        from analysis()
-    Returns
-    -------
-    pyplot figure of each respective plot
-    """
     pairwise_mantel = pd.read_csv(input_fp + "/pairwise_mantel.csv")
     pre_post = pd.read_csv(input_fp + "/pre_post.csv")
     counts = pd.read_csv(input_fp + "/counts.csv")
@@ -451,26 +428,26 @@ def calculate_trim_lengths(length, trim_incr, num_trims):
     return trim_lengths, percents
 
 
-# TODO Shell script for integration testing-- See if working TOGETHER
-# MIGHT want to normalize data before bray curtis,
-# some biom operations are inplace!
-# Norm so each sample is vector of magnitude 1
-    # Put on github
-    # Pep-8
-# TODO test saving
-# TODO more testing!!!!
-# TODO do eg.s in python console format
-# TODO throw exceptions?
-# TODO docstring shows up in help string and it is excessive
-
-# Meeting notes
-# TODO understand your metrics!!
-# TODO dont worry about percents
+# High priority
+# TODO integration tests
+# TODO demux unit tests
+# TODO how to plot collapse count
+# TODO try with normalized data
 # TODO test against different environments eg. fecal, skin, soil
-# TODO more granular metrics
-# eg.
-# Look @ distribution of difference-per-feature
-# plot taxa that got dropped out
-# look @ top collapsed features
-# sequencing depth
+# TODO more metrics!! eg. seq depth
+    # eg.
+    # Look @ distribution of difference-per-feature
+    # plot taxa that got dropped out
+    # look @ top collapsed features
+    # sequencing depth
+
+# Low priority
+# TODO input validity checks
+# TODO saves to wd regardless of -o in analysis
+# TODO fp with / still works
+# TODO do eg.s in python console format
+# TODO get rid of percents business
+
+# Ideas
+# TODO append sample name in pre_post
 

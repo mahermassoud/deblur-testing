@@ -187,8 +187,6 @@ class TestPostTrim(TestCase):
 
     def test_get_collapse_count(self):
         obs = get_collapse_counts([post_trim(self.t, 3)])
-        print(self.exp_clps)
-        print(obs)
 
         assert_frame_equal(self.exp_clps, obs, check_like=True)
 

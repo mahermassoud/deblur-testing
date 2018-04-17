@@ -125,11 +125,12 @@ def get_collapse_counts(pt_bioms):
     for bt in pt_bioms:
         otus = bt.ids(axis="observation")
         length = len(otus[0])
-        counts = [len(bt.metadata(id=otu, axis="observation")) for otu in otus]
+        counts = [len(bt.metadata(id=otu, axis="observation")["collapsed_ids"])
+                  for otu in otus]
 
-        otu_col = otu_col + otus
-        len_col.append([length] * len(otus))
-        counts_col.append(counts)
+        otu_col.extend(otus)
+        len_col.extend([length] * len(otus))
+        counts_col.extend(counts)
 
 
     return pd.DataFrame({"otu" : otu_col, "length" : len_col,
@@ -167,7 +168,7 @@ def get_distance_distribution(pre_table_overlap, post_table_overlap):
                 a = pre_table_overlap.data(obs, axis='observation', dense=True)
                 b = post_table_overlap.data(obs, axis='observation',
                                             dense=True)
-            results.append((obs, fname, f(a, b))) # TODO append sample too?
+            results.append((obs, fname, f(a, b)))
 
     results = pd.DataFrame(results, columns = ["seq", "dist_type", "dist"])
     return results
@@ -215,7 +216,6 @@ def get_overlap_tables(pre, post):
     post_ids = post.ids(axis='observation')
 
     features_in_common = set(pre_ids) & set(post_ids)
-    #print(str(len(features_in_common)) + " reads in common when intersecting")
     pre_table_overlap = pre.filter(features_in_common, axis='observation',
                                    inplace=False)
     post_table_overlap = post.filter(features_in_common, axis='observation',
