@@ -66,6 +66,21 @@ class TestPairwiseDist(TestCase):
                                 [ 0.5,  0., 0.33333333],
                                 [ 1.,  0.33333333,  0.]])
 
+        self.pre = biom.Table(np.array([[1,1,0],[0,1,1]]),
+                        ['A', 'B'], ['S1', 'S2','S3'])
+        self.post = biom.Table(np.array([[10,50,0],[0,0,30]]),
+                                ['A', 'B'], ['S1', 'S2','S3'])
+        self.tl = [100]
+        self.exp_df = pd.DataFrame(columns = ["trim_length", "dist_type", "r",
+                                              "nsamples"],
+                                   data= np.array([
+                                                  [100,"jaccard", 0.49999999, 3],
+                                                  [100,"braycurtis",0.5, 3]]))
+        self.exp_df["r"] = pd.to_numeric(self.exp_df["r"])
+        self.exp_df["trim_length"] = pd.to_numeric(self.exp_df["trim_length"])
+        self.exp_df["nsamples"] = pd.to_numeric(self.exp_df["nsamples"])
+        self.exp_df["r_sq"] = self.exp_df["r"] ** 2
+
     def test_jaccard(self):
         obs = get_pairwise_dist_mat(self.jaccard_in,"jaccard")
         assert_array_almost_equal(self.jaccard_exp, obs.data)
@@ -75,9 +90,10 @@ class TestPairwiseDist(TestCase):
         assert_array_almost_equal(self.bc_exp, obs.data)
 
     def test_get_pairwise_diversity(self):
-        #get_pairwise_diversity_data([jaccard])
-        #TODO
-        return
+        obs = get_pairwise_diversity_data([self.pre], [self.post], self.tl)
+        obs = obs.drop(["pval"], axis=1)
+        assert_frame_equal(self.exp_df, obs, check_less_precise=True,
+                           check_dtype=False)
 
 
 class TestPrePostDist(TestCase):
@@ -151,20 +167,30 @@ class TestPostTrim(TestCase):
                             ['AATT', 'AATG', 'ATGC','AATC'], ['S1', 'S2', 'S3', 'S4'])
         self.exp_pt = biom.Table(np.array([[7,7,10,17],[8,9,10,11]]),
                             ['AAT', 'ATG'], ['S1', 'S2', 'S3', 'S4'])
-        self.exp_pt = Artifact.import_data("FeatureTable[Frequency]",
-                                           self.exp_pt)
+        self.exp_md = ["AATT", "AATG", "AATC"]
+        self.exp_clps = pd.DataFrame({"otu": ["AAT", "ATG"], "length": [3, 3],
+                                      "num_collapses": [3, 1]})
 
     def test_post_trim(self):
         obs = post_trim(self.t, 3)
 
         # Sort them
-        obs = obs.sort_order(self.exp_pt.view(biom.Table).ids(axis="observation"),
+        obs = obs.sort_order(self.exp_pt.ids(axis="observation"),
                              axis="observation")
+        self.assertEqual(str(self.exp_pt), str(obs))
 
-        print("----in----\n" + str(self.t))
-        print("----out----\n" + str(obs))
-        print("----exp----\n" + str(self.exp_pt.view(biom.Table)))
-        self.assertEqual(str(self.exp_pt.view(biom.Table)), str(obs))
+    def test_pt_metadata(self):
+        obs = post_trim(self.t, 3)
+        obs_md = obs.metadata(id="AAT", axis="observation")["collapsed_ids"]
+
+        self.assertCountEqual(self.exp_md, obs_md)
+
+    def test_get_collapse_count(self):
+        obs = get_collapse_counts([post_trim(self.t, 3)])
+        print(self.exp_clps)
+        print(obs)
+
+        assert_frame_equal(self.exp_clps, obs, check_like=True)
 
 class TestShortSeq(TestCase):
     def setUp(self):

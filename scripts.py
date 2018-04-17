@@ -21,12 +21,12 @@ import pandas as pd
               help="Name of column in metadata file that holds barcodes")
 @click.option('-rev_bc', is_flag=True, help="Will reverse barcodes")
 @click.option('-rev_map_bc', is_flag=True, help="Will reverse mapping barcodes")
-@click.option('-o', '--output-fp',  type=click.Path(),
+@click.option('-o', '--output-fp',  type=click.Path(), default = None,
               help="Path to where demuxed qza is saved. Must specify filename. qza extension optional. Does not save if not supplied")
 # TEST with rdemux -seqs=test/analysis_testing_wd/mock-3/emp-single-end-sequences/
 # -metadata=test/analysis_testing_wd/mock-3/sample-metadata.tsv -out=rdemux_out
 # -metadata_bc_col=BarcodeSequence
-def demux(input_fp, metadata, metadata_bc_col, rev_bc, rev_map_bc, output_fp = None):
+def demux(input_fp, metadata, metadata_bc_col, rev_bc, rev_map_bc, output_fp):
     """Imports data and runs demux on it
 
     Parameters
@@ -53,7 +53,6 @@ def demux(input_fp, metadata, metadata_bc_col, rev_bc, rev_map_bc, output_fp = N
     Metadata
         Associated metadata
     """
-    # TODO docstring shows up in help string and it is excessive
     if(input_fp is None or metadata is None or metadata_bc_col is None):
         click.echo("Incorrect. Run \'rdemux --help\' flag to see correct usage")
         #TODO change so it tells you whats wrong
@@ -81,7 +80,7 @@ def demux(input_fp, metadata, metadata_bc_col, rev_bc, rev_map_bc, output_fp = N
 
 @click.command()
 @click.option('-i', '--input-fp',
-              type=click.Path(exists=True),
+              type=click.Path(exists=True), required = True,
               help="Path to demuxed qza")
 @click.option('-l', '--trim-length', type=click.INT, default=100,
               help='Trim length, default set to max possible length. '
@@ -90,12 +89,12 @@ def demux(input_fp, metadata, metadata_bc_col, rev_bc, rev_map_bc, output_fp = N
               help='Percent increment amount for different trim lengths, default 10%')
 @click.option('-n', '--num-trims', type=click.INT, default=5,
               help='Number of lengths to trim to, default 5')
-@click.option('-o', '--output-fp', type=click.Path(),
+@click.option('-o', '--output-fp', type=click.Path(), default = None,
               help='Path to output deblurred qza files, optional')
 @click.option('-nc', '--num-cores', type=click.INT, default=1,
               help="Number of cores to parallelize deblur")
-def pre_trims(input_fp, trim_length = 100, trim_incr = 10,
-              num_trims = 5, output_fp = None, num_cores = 1):
+def pre_trims(input_fp, trim_length, trim_incr,
+              num_trims, output_fp, num_cores):
     """Quality filters and then pre_trims sequences to various pre-trim lengths
     Saves qza's if specified. With naming format "deblurred_pre_<length>nt.qza
 
@@ -124,7 +123,7 @@ def pre_trims(input_fp, trim_length = 100, trim_incr = 10,
     return pre_trims_art(input_artifact, trim_length, trim_incr, num_trims,
                          output_fp, num_cores)
 
-def pre_trims_art(input_artifact, trim_length = 100, trim_incr = 10,
+def pre_trims_art(input_artifact, trim_length= 100, trim_incr = 10,
                   num_trims = 5, output_fp = None, num_cores = 1):
     """Quality filters and then pre_trims sequences to various pre-trim lengths
     Saves qza's if specified. With naming format "deblurred_pre_<length>.qza
@@ -172,10 +171,9 @@ def pre_trims_art(input_artifact, trim_length = 100, trim_incr = 10,
               help='Percent increment amount for different trim lengths, default 10%')
 @click.option('-n', '--num-trims', type=click.INT, default=5,
               help='Number of lengths to trim to, default 5')
-@click.option('-o', '--output-fp', type=click.Path(),
+@click.option('-o', '--output-fp', type=click.Path(), default = None,
               help='Path to output post-trimmed qza files, optional')
-def post_trims(input_fp, trim_incr = 10,
-               num_trims = 5, output_fp = None):
+def post_trims(input_fp, trim_incr, num_trims, output_fp):
     """Post trims to various specified lengths.
     Saves qza's if specified. With naming format "deblurred_pt_<length>.qza
     eg. If input is length 100, trim_incr=10 and num_trims=5, post trims to
@@ -256,12 +254,12 @@ def post_trims_art(input_artifact = None, trim_incr = 10,
               "format output by post_trims and pre_trims. Required that each "
               "post-trim has corresponding pre-trim")
 @click.option('-o', '--output-fp',type=click.Path(file_okay=False,exists=True),
-              required=False, help='Path to output csv files')
+              default = None, required=False, help='Path to output csv files')
 @click.option('--trim-incr', type=click.INT, default=10,
               help='Percent increment amount for different trim lengths, default 10%')
 @click.option('-n', '--num-trims', type=click.INT, default=5,
               help='Number of lengths to trim to, default 5')
-def analysis(input_fp, output_fp = None, trim_incr = 10, num_trims = 5):
+def analysis(input_fp, output_fp, trim_incr, num_trims):
 
     pres = dict()
     res = [f for f in os.listdir(input_fp)
@@ -287,7 +285,6 @@ def analysis(input_fp, output_fp = None, trim_incr = 10, num_trims = 5):
     post_artifacts = [posts[x] for x in sorted(posts.keys())]
     post_artifacts.reverse()
 
-    ##Saves qza's if specified. With naming format "deblurred_pre_<length>nt.qza
     return analysis_art(pre_artifacts, post_artifacts, trim_incr, num_trims,
                         output_fp)
 
@@ -349,8 +346,8 @@ def analysis_art(pre_artifacts, post_artifacts, trim_incr = 10, num_trims = 5,
               required=True,
               help="Path to directory holding csv files made by analysis")
 @click.option('-o', '--output-fp',type=click.Path(file_okay=False,exists=True),
-              required=False, help='Path to output csv files')
-def do_plots(input_fp, output_fp = None):
+              default = None, required=False, help='Path to output csv files')
+def do_plots(input_fp, output_fp):
     """Plots data generated by analysis()
 
     Parameters
@@ -458,13 +455,22 @@ def calculate_trim_lengths(length, trim_incr, num_trims):
 # MIGHT want to normalize data before bray curtis,
 # some biom operations are inplace!
 # Norm so each sample is vector of magnitude 1
-# GO TO CODE REVIEWS!!!
     # Put on github
     # Pep-8
 # TODO test saving
 # TODO more testing!!!!
-# TODO consistent with ' vs "
-# TODO use click groups
 # TODO do eg.s in python console format
 # TODO throw exceptions?
-# TODO look @ math behind mantel
+# TODO docstring shows up in help string and it is excessive
+
+# Meeting notes
+# TODO understand your metrics!!
+# TODO dont worry about percents
+# TODO test against different environments eg. fecal, skin, soil
+# TODO more granular metrics
+# eg.
+# Look @ distribution of difference-per-feature
+# plot taxa that got dropped out
+# look @ top collapsed features
+# sequencing depth
+

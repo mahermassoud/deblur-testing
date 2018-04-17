@@ -12,7 +12,7 @@ import biom
 import os
 import scipy
 import skbio.io
-import numpy as np
+from collections import Counter
 
 def import_dataset(working_dir_fp, metadata_barcode_column,
                    rev_comp_barcodes_in=False,
@@ -86,26 +86,54 @@ def do_deblur(demuxed_seqs, pre_trim_length, num_cores = 1):
 
 
 
-def post_trim(deblurred_biom, post_trim_length):
+def post_trim(db_biom, length):
     """Trims a deblurred set of seqs
 
     Parameters
     ----------
-    deblurred_biom: biom.Table
+    db_biom: biom.Table
         deblurred seqs as biom table
-    post_trim_length: int
+    length: int
         length to trim to
 
     Returns
     -------
     biom.Table of trimmed,deblurred seqs
     """
-    print("Trimming post-demuxed seqs to {:d}".format(post_trim_length))
-    post_trimmed_biom = \
-        deblurred_biom.collapse(lambda i, m: i[:post_trim_length],
-                                axis="observation", norm=False)
+    print("Trimming post-demuxed seqs to {:d}".format(length))
+    pt_biom = db_biom.collapse(lambda i, m: i[:length], axis="observation",
+                               norm=False, include_collapsed_metadata=True)
 
-    return post_trimmed_biom
+    return pt_biom
+
+def get_collapse_counts(pt_bioms):
+    """Fore each trim length and OTU , says how many times otu was collapsed to
+
+    Parameters
+    ----------
+    bioms: array_like of biom.Table
+        list of post trimmed bioms we are getting counts for. Must have the
+        metadata column "collapsed_ids" on observation axis
+
+    Returns
+    -------
+    pandas.DataFrame with columns ["otu", "length", "num_collapses"]
+    """
+    otu_col = []
+    len_col = []
+    counts_col = []
+    for bt in pt_bioms:
+        otus = bt.ids(axis="observation")
+        length = len(otus[0])
+        counts = [len(bt.metadata(id=otu, axis="observation")) for otu in otus]
+
+        otu_col = otu_col + otus
+        len_col.append([length] * len(otus))
+        counts_col.append(counts)
+
+
+    return pd.DataFrame({"otu" : otu_col, "length" : len_col,
+                         "num_collapses": counts_col})
 
 def get_distance_distribution(pre_table_overlap, post_table_overlap):
     """Given biom tables of overlapping reads, returns jaccard and bray curtis
@@ -245,7 +273,6 @@ def get_pre_post_distance_data(pre_bioms, post_bioms, trim_lengths):
         dists["length"] = trim_lengths[i]
         all_dists = all_dists.append(dists)
 
-    # TODO unit tests for pre_overlaps, post_overlaps
     return all_dists, pre_overlaps, post_overlaps
 
 def get_pairwise_diversity_data(pre_bioms, post_bioms, trim_lengths):
@@ -275,7 +302,8 @@ def get_pairwise_diversity_data(pre_bioms, post_bioms, trim_lengths):
                                                                  len(trim_lengths)))
 
     cols = ["trim_length", "dist_type", "r", "pval", "nsamples"]
-    pairwise_diversity = pd.DataFrame(columns=cols)
+    p_div = pd.DataFrame(index=range(2*len(pre_bioms)), columns=cols)
+    j = 0
     for i in range(len(pre_bioms)):
         # pairwise distance matrices
         pre_biom = pre_bioms[i]
@@ -284,16 +312,16 @@ def get_pairwise_diversity_data(pre_bioms, post_bioms, trim_lengths):
         pre_d_j = get_pairwise_dist_mat(pre_biom, "jaccard")
         post_d_j = get_pairwise_dist_mat(post_biom, "jaccard")
         r, p, nsamp = mantel(pre_d_j, post_d_j)
-        pairwise_diversity = pairwise_diversity.append(dict(zip(cols, [trim_lengths[i], "jaccard", r, p, nsamp])),
-                                                       ignore_index=True)
+        p_div.iloc[j] = [trim_lengths[i], "jaccard", r, p, nsamp]
+        j += 1
+
         pre_d_bc = get_pairwise_dist_mat(pre_biom, "braycurtis")
         post_d_bc = get_pairwise_dist_mat(post_biom, "braycurtis")
         r, p, nsamp = mantel(pre_d_bc, post_d_bc)
-        pairwise_diversity = pairwise_diversity.append(dict(zip(cols, [trim_lengths[i], "braycurtis", r, p, nsamp])),
-                                                       ignore_index=True)
+        p_div.iloc[j] = [trim_lengths[i], "braycurtis", r, p, nsamp]
 
-    pairwise_diversity["r_sq"] = pairwise_diversity["r"]**2
-    return pairwise_diversity
+    p_div["r_sq"] = p_div["r"]**2
+    return p_div
 
 def get_count_data(pre_bioms, pre_overlaps, post_bioms, post_overlaps,
                   trim_lengths):
@@ -365,7 +393,6 @@ def get_count_data(pre_bioms, pre_overlaps, post_bioms, post_overlaps,
     change_reads_per_sample = \
         pd.concat([change_reads_per_sample, delta], axis=1)
 
-    # TODO unit tests for this!!
     return count_data, change_reads_per_sample
 
 def num_sOTUs(biom_table):
