@@ -117,7 +117,7 @@ def get_collapse_counts(pt_bioms):
 
     Returns
     -------
-    pandas.DataFrame with columns ["otu", "length", "num_collapses"]
+    pandas.DataFrame with columns ["seq", "length", "num_collapses"]
     """
     otu_col = []
     len_col = []
@@ -133,7 +133,7 @@ def get_collapse_counts(pt_bioms):
         counts_col.extend(counts)
 
 
-    return pd.DataFrame({"otu" : otu_col, "length" : len_col,
+    return pd.DataFrame({"seq" : otu_col, "length" : len_col,
                          "num_collapses": counts_col})
 
 def get_distance_distribution(pre_table_overlap, post_table_overlap):

@@ -210,6 +210,7 @@ def post_trims_art(clps_fp, input_artifact = None, trim_incr = 10,
     Returns
     -------
     list of length trim_lengths of post_trimmed seqs as biom tables
+    pandas.DataFrame of collapse data
     """
     print(input_artifact)
     input_biom = input_artifact.view(biom.Table)
@@ -234,7 +235,7 @@ def post_trims_art(clps_fp, input_artifact = None, trim_incr = 10,
     clps = methods.get_collapse_counts(pt_bioms)
     clps.to_csv(clps_fp, index=False)
 
-    return pt_bioms
+    return pt_bioms, clps
 
 @click.command()
 @click.option("-i","--input-fp", type=click.Path(exists=True, file_okay=False),
@@ -242,13 +243,16 @@ def post_trims_art(clps_fp, input_artifact = None, trim_incr = 10,
               help="Path to directory holding pre and post qza's. In naming "
               "format output by post_trims and pre_trims. Required that each "
               "post-trim has corresponding pre-trim")
+@click.option("-ci","--clps-fp", type=click.Path(exists=True, file_okay=True),
+              required=True,
+              help="Path to collapsed data file output by rpost_trims")
 @click.option('-o', '--output-fp',type=click.Path(file_okay=False,exists=True),
               default = None, required=False, help='Path to output csv files')
 @click.option('--trim-incr', type=click.INT, default=10,
               help='Percent increment amount for different trim lengths, default 10%')
 @click.option('-n', '--num-trims', type=click.INT, default=5,
               help='Number of lengths to trim to, default 5')
-def analysis(input_fp, output_fp, trim_incr, num_trims):
+def analysis(input_fp, clps_fp, output_fp, trim_incr, num_trims):
 
     pres = dict()
     res = [f for f in os.listdir(input_fp)
@@ -274,12 +278,14 @@ def analysis(input_fp, output_fp, trim_incr, num_trims):
     post_artifacts = [posts[x] for x in sorted(posts.keys())]
     post_artifacts.reverse()
 
-    return analysis_art(pre_artifacts, post_artifacts, trim_incr, num_trims,
-                        output_fp)
+    clps_df = pd.read_csv(clps_fp)
+
+    return analysis_art(pre_artifacts, post_artifacts, clps_df,
+                        trim_incr, num_trims, output_fp)
 
 
-def analysis_art(pre_artifacts, post_artifacts, trim_incr = 10, num_trims = 5,
-                 output_fp = None):
+def analysis_art(pre_artifacts, post_artifacts, clps_df, trim_incr=10,
+                 num_trims=5, output_fp = None):
     """Returns analysis data on pre/post artifacts
 
     Parameters
@@ -290,6 +296,9 @@ def analysis_art(pre_artifacts, post_artifacts, trim_incr = 10, num_trims = 5,
     post_artifacts: array_like of qiime2 artifacts
         post-trimmed Artifacts in descending trim length order. Should be in
         same order as pre_artifacts
+    clps_df: pd.DataFrame
+        Dataframe holding collapse data as output by
+        methods.get_collapse_data()
     trim_incr: int, optional
         Percent amount to decrement by. Should correspond to input artifacts
     num_trims: int, optional
@@ -301,7 +310,8 @@ def analysis_art(pre_artifacts, post_artifacts, trim_incr = 10, num_trims = 5,
     Returns
     -------
     pandas DataFrame of pariwise mantel test data
-    pandas DataFrame of distance between pre and post matching otus
+    pandas DataFrame of distance between pre and post matching otus and
+    collapse counts
     pandas DataFrame of sOTU and sample counts
     pandas DataFrame of changes in reads per sample from pre to post (pre-post)
     """
@@ -316,12 +326,14 @@ def analysis_art(pre_artifacts, post_artifacts, trim_incr = 10, num_trims = 5,
                                                           trim_lengths)
     pre_post, pre_overlaps, post_overlaps = \
         methods.get_pre_post_distance_data(pre_bioms, post_bioms, trim_lengths)
+    # merge pre_post with collapse data so we can perform correlation
+    pre_post = pd.merge(pre_post, clps_df[["seq","num_collapses"]], on="seq")
 
     counts, read_changes = methods.get_count_data(pre_bioms, pre_overlaps,
                                                   post_bioms, post_overlaps,
                                                   trim_lengths)
 
-    if(output_fp is None):
+    if(output_fp is not None):
         pairwise_mantel.to_csv(output_fp + "/pairwise_mantel.csv", index=False)
         pre_post.to_csv(output_fp + "/pre_post.csv", index=False)
         counts.to_csv(output_fp + "/counts.csv", index=False)
@@ -434,20 +446,27 @@ def calculate_trim_lengths(length, trim_incr, num_trims):
 # TODO how to plot collapse count
 # TODO try with normalized data
 # TODO test against different environments eg. fecal, skin, soil
+# TODO fp with / still works
+# TODO input validity checks
 # TODO more metrics!! eg. seq depth
     # eg.
     # Look @ distribution of difference-per-feature
     # plot taxa that got dropped out
-    # look @ top collapsed features
+    # look @ distribution of top collapsed features
+    # if it is non-uniform, that would suggest we are losing info
+        # ALSO need to look at weight.
+        # eg. if 90% of an OTU's counts are collapsed is that bad?
+        # plot percent of counts in otu that are collapsed?
+    # Straight up jac/bc/mantel between biom tables
     # sequencing depth
 
 # Low priority
-# TODO input validity checks
 # TODO saves to wd regardless of -o in analysis
-# TODO fp with / still works
 # TODO do eg.s in python console format
 # TODO get rid of percents business
 
 # Ideas
 # TODO append sample name in pre_post
 
+# Questions
+# When they said plot taxa, did they mean the actual species?
