@@ -12,7 +12,7 @@ import pandas as pd
 
 @click.command()
 @click.option('-i','--input-fp', required=True,
-              type=click.Path(exists=True),
+              type=click.Path(exists=True, file_okay=False),
               help="Path to folder that contains sequences and barcodes")
 @click.option('-m','-metadata', required=True,
               type=click.Path(exists=True),
@@ -21,12 +21,9 @@ import pandas as pd
               help="Name of column in metadata file that holds barcodes")
 @click.option('-rev_bc', is_flag=True, help="Will reverse barcodes")
 @click.option('-rev_map_bc', is_flag=True, help="Will reverse mapping barcodes")
-@click.option('-o', '--output-fp',  type=click.Path(), default = None,
+@click.option('-o', '--output-fp',  type=click.Path(dir_okay=False), default = None,
               help="Path to where demuxed qza is saved. Must specify filename. qza extension optional. Does not save if not supplied")
-# TEST with rdemux -seqs=test/analysis_testing_wd/mock-3/emp-single-end-sequences/
-# -metadata=test/analysis_testing_wd/mock-3/sample-metadata.tsv -out=rdemux_out
-# -metadata_bc_col=BarcodeSequence
-def demux(input_fp, metadata, metadata_bc_col, rev_bc, rev_map_bc, output_fp):
+def do_demux(input_fp, metadata, metadata_bc_col, rev_bc, rev_map_bc, output_fp):
     """Imports data and runs demux on it
 
     Parameters
@@ -66,8 +63,8 @@ def demux(input_fp, metadata, metadata_bc_col, rev_bc, rev_map_bc, output_fp):
     print("Demuxing")
     demux, = emp_single(art,
                         barcode_metadata.get_category(metadata_bc_col),
-                        rev_comp_barcodes = rev_bc,
-                        rev_comp_mapping_barcodes = rev_map_bc)
+                        rev_comp_barcodes=rev_bc,
+                        rev_comp_mapping_barcodes=rev_map_bc)
 
     if(output_fp is None):
         click.echo("Not saving demux output")
@@ -118,6 +115,10 @@ def pre_trims(input_fp, trim_length, trim_incr,
     """
     click.echo("Importing seq data from " + input_fp)
     input_artifact = Artifact.load(input_fp)
+
+    if output_fp.endswith('/'):
+        output_fp = output_fp[:-1]
+
     return pre_trims_art(input_artifact, trim_length, trim_incr, num_trims,
                          output_fp, num_cores)
 
@@ -170,22 +171,22 @@ def pre_trims_art(input_artifact, trim_length= 100, trim_incr = 10,
               help='Percent increment amount for different trim lengths, default 10%')
 @click.option('-n', '--num-trims', type=click.INT, default=5,
               help='Number of lengths to trim to, default 5')
-@click.option('-cf', '--clps-fp', type=click.Path(), default="collapse.csv",
-              help="Output path for collapse data tsv file")
-@click.option('-o', '--output-fp', type=click.Path(dir_okay=False), default = None,
-              help='Path to output post-trimmed qza files, optional')
-def post_trims(input_fp, trim_incr, num_trims, clps_fp, output_fp):
+@click.option('-o', '--output-fp', type=click.Path(), default=None,
+              required=True,
+              help='Path to output post-trimmed qza files, and collapse.csv')
+def post_trims(input_fp, trim_incr, num_trims, output_fp):
     click.echo("Importing seq data from " + input_fp)
     input_artifact = Artifact.load(input_fp)
 
-    print(input_fp)
-    print(input_artifact)
-    return post_trims_art(clps_fp, input_artifact, trim_incr, num_trims,
+    if output_fp.endswith('/'):
+        output_fp = output_fp[:-1]
+
+    return post_trims_art( input_artifact, trim_incr, num_trims,
                           output_fp)
 
 
-def post_trims_art(clps_fp, input_artifact = None, trim_incr = 10,
-               num_trims = 5, output_fp = None):
+def post_trims_art(output_fp, input_artifact = None, trim_incr = 10,
+               num_trims = 5):
     """Post trims to various specified lengths.
     Saves qza's if specified. With naming format "deblurred_pt_<length>.qza
     eg. If input is length 100, trim_incr=10 and num_trims=5, post trims to
@@ -230,29 +231,31 @@ def post_trims_art(clps_fp, input_artifact = None, trim_incr = 10,
         if(output_fp is not None):
             pt_artifact = Artifact.import_data("FeatureTable[Frequency]",
                                                pt_biom)
-            pt_artifact.save("deblurred_pt_" + str(l) + ".qza")
+            pt_artifact.save(output_fp + "/deblurred_pt_" + str(l) + ".qza")
 
     clps = methods.get_collapse_counts(pt_bioms)
-    clps.to_csv(clps_fp, index=False)
+    clps.to_csv(output_fp + "/collapse.csv", index=False)
 
     return pt_bioms, clps
 
 @click.command()
 @click.option("-i","--input-fp", type=click.Path(exists=True, file_okay=False),
               required=True,
-              help="Path to directory holding pre and post qza's. In naming "
-              "format output by post_trims and pre_trims. Required that each "
-              "post-trim has corresponding pre-trim")
-@click.option("-ci","--clps-fp", type=click.Path(exists=True, file_okay=True),
-              required=True,
-              help="Path to collapsed data file output by rpost_trims")
+              help="Path to directory holding pre, post qzas, collapse.csv . "
+                   "In naming format output by post_trims and pre_trims. "
+                   "Required that each post-trim has corresponding pre-trim")
 @click.option('-o', '--output-fp',type=click.Path(file_okay=False,exists=True),
               default = None, required=False, help='Path to output csv files')
 @click.option('--trim-incr', type=click.INT, default=10,
               help='Percent increment amount for different trim lengths, default 10%')
 @click.option('-n', '--num-trims', type=click.INT, default=5,
               help='Number of lengths to trim to, default 5')
-def analysis(input_fp, clps_fp, output_fp, trim_incr, num_trims):
+def analysis(input_fp, output_fp, trim_incr, num_trims):
+
+    if input_fp.endswith('/'):
+        input_fp = input_fp[:-1]
+    if output_fp.endswith('/'):
+        output_fp = output_fp[:-1]
 
     pres = dict()
     res = [f for f in os.listdir(input_fp)
@@ -278,7 +281,7 @@ def analysis(input_fp, clps_fp, output_fp, trim_incr, num_trims):
     post_artifacts = [posts[x] for x in sorted(posts.keys())]
     post_artifacts.reverse()
 
-    clps_df = pd.read_csv(clps_fp)
+    clps_df = pd.read_csv(input_fp + "/collapse.csv")
 
     return analysis_art(pre_artifacts, post_artifacts, clps_df,
                         trim_incr, num_trims, output_fp)
@@ -348,6 +351,11 @@ def analysis_art(pre_artifacts, post_artifacts, clps_df, trim_incr=10,
 @click.option('-o', '--output-fp',type=click.Path(file_okay=False,exists=True),
               default = None, required=False, help='Path to output csv files')
 def do_plots(input_fp, output_fp):
+    if input_fp.endswith('/'):
+        input_fp = input_fp[:-1]
+    if output_fp.endswith('/'):
+        output_fp = output_fp[:-1]
+
     pairwise_mantel = pd.read_csv(input_fp + "/pairwise_mantel.csv")
     pre_post = pd.read_csv(input_fp + "/pre_post.csv")
     counts = pd.read_csv(input_fp + "/counts.csv")
@@ -386,6 +394,13 @@ def plot_pd(pairwise_mantel, pre_post, counts, read_changes, output_fp = None):
         plt.savefig(output_fp + "/pre_post.png")
     plt.figure()
 
+    clps_reg = sns.lmplot(x="num_collapses", y="dist", data=pre_post,
+                          col="dist_type", ci=None)
+
+    if output_fp is not None:
+        plt.savefig(output_fp + "/collapse.png")
+    plt.figure()
+
     plt.plot(counts["trim_length"], counts["sOTU_overlap_count"])
     plt.plot(counts["trim_length"], counts["sOTU_unique_pre"])
     plt.plot(counts["trim_length"], counts["sOTU_unique_post"])
@@ -406,8 +421,6 @@ def plot_pd(pairwise_mantel, pre_post, counts, read_changes, output_fp = None):
 
     if output_fp is not None:
         plt.savefig(output_fp + "/read_changes.png")
-
-    #return mantel_plot, pp_plot, c_plot, rc_plot
 
 def calculate_trim_lengths(length, trim_incr, num_trims):
     """Returns list of lengths we will trim to. Each trim_incr percent less
@@ -448,6 +461,7 @@ def calculate_trim_lengths(length, trim_incr, num_trims):
 # TODO test against different environments eg. fecal, skin, soil
 # TODO fp with / still works
 # TODO input validity checks
+# TODO aggregate script
 # TODO more metrics!! eg. seq depth
     # eg.
     # Look @ distribution of difference-per-feature
@@ -464,6 +478,10 @@ def calculate_trim_lengths(length, trim_incr, num_trims):
 # TODO saves to wd regardless of -o in analysis
 # TODO do eg.s in python console format
 # TODO get rid of percents business
+# TODO Get rid of machine specific paths
+# TODO Fix Demux test by using small samples
+# TODO Clean up test folder structure
+# TODO look @ calculating trim length
 
 # Ideas
 # TODO append sample name in pre_post

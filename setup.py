@@ -9,7 +9,7 @@ setup(
     ],
     entry_points='''
         [console_scripts]
-        rdemux=scripts:demux
+        rdemux=scripts:do_demux
         rdeblur=scripts:pre_trims
         rpost_trim=scripts:post_trims
         ranalysis=scripts:analysis
