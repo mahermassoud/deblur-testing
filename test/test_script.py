@@ -35,7 +35,11 @@ class TestPreTrims(TestCase):
                         "deblurred_pre_120.qza", "deblurred_pre_105.qza",
                         "deblurred_pre_90.qza", "deblur.log"]
 
+
     def test_pre_trims(self):
+        """
+        NOTE: this takes a long time to run ~7m on a macbook pro
+        """
         runner = CliRunner()
         with runner.isolated_filesystem():
             result = runner.invoke(pre_trims, ["-i", self.demux_fp, "-l", 150,

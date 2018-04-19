@@ -159,7 +159,7 @@ def pre_trims_art(input_artifact, trim_length= 100, trim_incr = 10,
         db_out = methods.do_deblur(input_artifact, l, num_cores=num_cores)
         deblurreds.append(db_out)
         if(output_fp is not None):
-            db_out.save("deblurred_pre_" + str(l) + ".qza")
+            db_out.save(output_fp + "/deblurred_pre_" + str(l) + ".qza")
 
     return deblurreds
 
@@ -181,8 +181,7 @@ def post_trims(input_fp, trim_incr, num_trims, output_fp):
     if output_fp.endswith('/'):
         output_fp = output_fp[:-1]
 
-    return post_trims_art( input_artifact, trim_incr, num_trims,
-                          output_fp)
+    return post_trims_art(output_fp, input_artifact, trim_incr, num_trims)
 
 
 def post_trims_art(output_fp, input_artifact = None, trim_incr = 10,
@@ -454,14 +453,11 @@ def calculate_trim_lengths(length, trim_incr, num_trims):
 
 
 # High priority
+# TODO aggregate script
 # TODO integration tests
-# TODO demux unit tests
-# TODO how to plot collapse count
 # TODO try with normalized data
 # TODO test against different environments eg. fecal, skin, soil
-# TODO fp with / still works
 # TODO input validity checks
-# TODO aggregate script
 # TODO more metrics!! eg. seq depth
     # eg.
     # Look @ distribution of difference-per-feature
@@ -475,10 +471,8 @@ def calculate_trim_lengths(length, trim_incr, num_trims):
     # sequencing depth
 
 # Low priority
-# TODO saves to wd regardless of -o in analysis
 # TODO do eg.s in python console format
 # TODO get rid of percents business
-# TODO Get rid of machine specific paths
 # TODO Fix Demux test by using small samples
 # TODO Clean up test folder structure
 # TODO look @ calculating trim length
