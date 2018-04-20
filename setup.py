@@ -3,9 +3,10 @@ from setuptools import setup
 setup(
     name="deblur_testing",
     version='0.1',
-    py_modules=['script'],
+    py_modules=['scripts'],
     install_requires=[
-        'qiime2 == 2017.11.*',
+        'Click',
+        'qiime2 == 2017.11.*'
     ],
     entry_points='''
         [console_scripts]
@@ -14,6 +15,7 @@ setup(
         rpost_trim=scripts:post_trims
         ranalysis=scripts:analysis
         rplot=scripts:do_plots
+        rall=scripts:pre_post
     ''',
 )
 

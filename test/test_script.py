@@ -32,8 +32,7 @@ class TestPreTrims(TestCase):
     def setUp(self):
         self.demux_fp = os.getcwd() + "/data/mock-3-demo/demux.qza"
         self.exp_out = ["deblurred_pre_150.qza", "deblurred_pre_135.qza",
-                        "deblurred_pre_120.qza", "deblurred_pre_105.qza",
-                        "deblurred_pre_90.qza", "deblur.log"]
+                        "deblur.log"]
 
 
     def test_pre_trims(self):
@@ -43,7 +42,8 @@ class TestPreTrims(TestCase):
         runner = CliRunner()
         with runner.isolated_filesystem():
             result = runner.invoke(pre_trims, ["-i", self.demux_fp, "-l", 150,
-                                               "-o", ".", "-nc", NUM_CORES])
+                                               "-o", ".", "-nc", NUM_CORES,
+                                               "-n", 2])
             out_files = listdir(os.getcwd())
 
             self.assertEqual(0, result.exit_code, msg=result.exc_info)
@@ -79,6 +79,36 @@ class TestAnalysis(TestCase):
             out_files = listdir(os.getcwd())
 
             self.assertEqual(0, result.exit_code, msg=result.exc_info)
+            self.assertCountEqual(self.exp_out, out_files)
+
+class TestAll(TestCase):
+    """Integration test"""
+    def setUp(self):
+        self.seq_path = os.getcwd() + "/data/mock-3/emp-single-end-sequences"
+        self.md_path = os.getcwd() + "/data/mock-3/sample-metadata.tsv"
+        self.exp_out = ["demux.qza", "deblurred_pre_150.qza",
+                        "deblurred_pre_135.qza", "deblur.log",
+                        "deblurred_pt_150.qza", "deblurred_pt_135.qza",
+                        "collapse.csv", "pairwise_mantel.csv", "pre_post.csv",
+                        "counts.csv", "read_changes.csv", 'collapse.png',
+                        'counts.png', 'pairwise_mantel.png', 'pre_post.png',
+                        'read_changes.png']
+
+    def test_pre_post(self):
+        runner = CliRunner()
+        with runner.isolated_filesystem():
+            result = runner.invoke(pre_post, ["-i", self.seq_path,
+                                              "-m", self.md_path,
+                                              "-mbc", "BarcodeSequence",
+                                              "-l", 150,
+                                              "-n", 2,
+                                              "-nc", NUM_CORES,
+                                              "-o", "."])
+
+            out_files = listdir(os.getcwd())
+            self.assertEqual(0, result.exit_code,
+                             msg="output:\n{}\nexc.info:\n{}"\
+                                 .format(result.output, result.exc_info))
             self.assertCountEqual(self.exp_out, out_files)
 
 

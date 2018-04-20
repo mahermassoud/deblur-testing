@@ -15,15 +15,21 @@ import pandas as pd
               type=click.Path(exists=True, file_okay=False),
               help="Path to folder that contains sequences and barcodes")
 @click.option('-m','-metadata', required=True,
-              type=click.Path(exists=True),
+              type=click.Path(exists=True, dir_okay=False),
               help="Path to sample metadata file")
-@click.option('-metadata_bc_col', required=True,
+@click.option('-mbc', '-metadata_bc_col', required=True,
               help="Name of column in metadata file that holds barcodes")
 @click.option('-rev_bc', is_flag=True, help="Will reverse barcodes")
 @click.option('-rev_map_bc', is_flag=True, help="Will reverse mapping barcodes")
 @click.option('-o', '--output-fp',  type=click.Path(dir_okay=False), default = None,
               help="Path to where demuxed qza is saved. Must specify filename. qza extension optional. Does not save if not supplied")
 def do_demux(input_fp, metadata, metadata_bc_col, rev_bc, rev_map_bc, output_fp):
+    """Imports raw seqsand runs demux on it
+    """
+    return do_demux_art(input_fp, metadata, metadata_bc_col, rev_bc,
+                        rev_map_bc, output_fp)
+
+def do_demux_art(input_fp, metadata, metadata_bc_col, rev_bc, rev_map_bc, output_fp):
     """Imports data and runs demux on it
 
     Parameters
@@ -78,8 +84,7 @@ def do_demux(input_fp, metadata, metadata_bc_col, rev_bc, rev_map_bc, output_fp)
               type=click.Path(exists=True), required = True,
               help="Path to demuxed qza")
 @click.option('-l', '--trim-length', type=click.INT, default=100,
-              help='Trim length, default set to max possible length. '
-                   'Supply if possible since calcuation is expensive')
+              help='Trim length, default set to max possible length.')
 @click.option('--trim-incr', type=click.INT, default=10,
               help='Percent increment amount for different trim lengths, default 10%')
 @click.option('-n', '--num-trims', type=click.INT, default=5,
@@ -209,7 +214,8 @@ def post_trims_art(output_fp, input_artifact = None, trim_incr = 10,
 
     Returns
     -------
-    list of length trim_lengths of post_trimmed seqs as biom tables
+    list of length trim_lengths of post_trimmed seqs as qiime2.Artifacts of
+    type FeatureTable[Frequency]
     pandas.DataFrame of collapse data
     """
     print(input_artifact)
@@ -224,18 +230,19 @@ def post_trims_art(output_fp, input_artifact = None, trim_incr = 10,
     trim_lengths, percent = calculate_trim_lengths(trim_length, trim_incr, num_trims)
 
     pt_bioms = []
+    pt_arts = []
     for l in trim_lengths:
         pt_biom = methods.post_trim(input_biom, l)
         pt_bioms.append(pt_biom)
+        pt_artifact = Artifact.import_data("FeatureTable[Frequency]", pt_biom)
+        pt_arts.append(pt_artifact)
         if(output_fp is not None):
-            pt_artifact = Artifact.import_data("FeatureTable[Frequency]",
-                                               pt_biom)
             pt_artifact.save(output_fp + "/deblurred_pt_" + str(l) + ".qza")
 
     clps = methods.get_collapse_counts(pt_bioms)
     clps.to_csv(output_fp + "/collapse.csv", index=False)
 
-    return pt_bioms, clps
+    return pt_arts, clps
 
 @click.command()
 @click.option("-i","--input-fp", type=click.Path(exists=True, file_okay=False),
@@ -421,6 +428,49 @@ def plot_pd(pairwise_mantel, pre_post, counts, read_changes, output_fp = None):
     if output_fp is not None:
         plt.savefig(output_fp + "/read_changes.png")
 
+@click.command()
+@click.option("-i", "--input-fp", required=True,
+              type=click.Path(file_okay=False, exists=True),
+              help="Path to directory that holds sequences.fastq.gz and"
+                   "barcodes.fastq.gz")
+@click.option('-m','-metadata', required=True,
+              type=click.Path(exists=True, dir_okay=False),
+              help="Path to sample metadata file")
+@click.option('-mbc', '--metadata_bc_col', required=True,
+              help="Name of column in metadata file that holds barcodes")
+@click.option('-rev_bc', is_flag=True, help="Will reverse barcodes")
+@click.option('-rev_map_bc', is_flag=True, help="Will reverse mapping barcodes")
+@click.option('-l', '--trim-length', type=click.INT, default=100,
+              help='Trim length, default set to max possible length.')
+@click.option('--trim-incr', type=click.INT, default=10,
+              help='Percent increment amount for different trim lengths, default 10%')
+@click.option('-n', '--num-trims', type=click.INT, default=5,
+              help='Number of lengths to trim to, default 5')
+@click.option('-nc', '--num-cores', type=click.INT, default=1,
+              help="Number of cores to parallelize deblur")
+@click.option("-o", "--output-fp", required=True,
+              type=click.Path(file_okay=False),
+              help="Directory where we will output everything, see other"
+                   "functions to see output formats. demux as demux.qza")
+def pre_post(input_fp, metadata, metadata_bc_col, rev_bc, rev_map_bc,
+             trim_length, trim_incr, num_trims, num_cores, output_fp):
+    """Runs the entire pre_post analysis pipeline from demux to plotting,
+    defaults to output EVERYTHING
+    """
+    demux, bc_md = do_demux_art(input_fp, metadata, metadata_bc_col, rev_bc,
+                            rev_map_bc, output_fp + "/demux.qza")
+
+    pre_arts = pre_trims_art(demux, trim_length, trim_incr, num_trims,
+                             output_fp, num_cores)
+
+    pt_arts, clps = post_trims_art(output_fp, pre_arts[0], trim_incr,
+                                   num_trims)
+
+    pw_mantel, pre_post, counts, read_changes = \
+        analysis_art(pre_arts, pt_arts, clps, trim_incr, num_trims, output_fp)
+
+    plot_pd(pw_mantel, pre_post, counts, read_changes, output_fp)
+
 def calculate_trim_lengths(length, trim_incr, num_trims):
     """Returns list of lengths we will trim to. Each trim_incr percent less
     eg. if length=100, trim_incr=10, num_trims=3, outputs [100,90,80]
@@ -450,35 +500,3 @@ def calculate_trim_lengths(length, trim_incr, num_trims):
         percent = percent - trim_incr
 
     return trim_lengths, percents
-
-
-# High priority
-# TODO aggregate script
-# TODO integration tests
-# TODO try with normalized data
-# TODO test against different environments eg. fecal, skin, soil
-# TODO input validity checks
-# TODO more metrics!! eg. seq depth
-    # eg.
-    # Look @ distribution of difference-per-feature
-    # plot taxa that got dropped out
-    # look @ distribution of top collapsed features
-    # if it is non-uniform, that would suggest we are losing info
-        # ALSO need to look at weight.
-        # eg. if 90% of an OTU's counts are collapsed is that bad?
-        # plot percent of counts in otu that are collapsed?
-    # Straight up jac/bc/mantel between biom tables
-    # sequencing depth
-
-# Low priority
-# TODO do eg.s in python console format
-# TODO get rid of percents business
-# TODO Fix Demux test by using small samples
-# TODO Clean up test folder structure
-# TODO look @ calculating trim length
-
-# Ideas
-# TODO append sample name in pre_post
-
-# Questions
-# When they said plot taxa, did they mean the actual species?
