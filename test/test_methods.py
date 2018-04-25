@@ -46,12 +46,12 @@ NUM_CORES = 4
 #        self.num_parallel = NUM_CORES
 #
 #    def test_establish_dataset(self):
-        obs = do_deblur(self.exp_demux, 150)
-        self.assertEqual(self.exp_deblurred.view(biom.Table), obs.view(biom.Table))
-
-    def test_establish_dataset_ncores(self):
-        obs = do_deblur(self.exp_demux, 150,
-                        num_cores=self.num_parallel)
+#        obs = do_deblur(self.exp_demux, 150)
+#        self.assertEqual(self.exp_deblurred.view(biom.Table), obs.view(biom.Table))
+#
+#    def test_establish_dataset_ncores(self):
+#        obs = do_deblur(self.exp_demux, 150,
+#                        num_cores=self.num_parallel)
         self.assertEqual(self.exp_deblurred.view(biom.Table), obs.view(biom.Table))
 
 class TestPairwiseDist(TestCase):
@@ -304,14 +304,14 @@ class TestGetCountData(TestCase):
 #            self.assertTrue(os.path.exists(forward_fp))
 #            self.assertTrue(os.path.getsize(forward_fp) > 0)
 #
-            barcode_fp = os.path.join(output_dir, "emp-single-end-sequences",
-                                      "barcodes.fastq.gz")
-            self.assertTrue(os.path.exists(barcode_fp))
-            self.assertTrue(os.path.getsize(barcode_fp) > 0)
-
-            metadata_fp = os.path.join(output_dir, "sample-metadata.tsv")
-            self.assertTrue(os.path.exists(metadata_fp))
-            self.assertTrue(os.path.getsize(metadata_fp) > 0)
+#            barcode_fp = os.path.join(output_dir, "emp-single-end-sequences",
+#                                      "barcodes.fastq.gz")
+#            self.assertTrue(os.path.exists(barcode_fp))
+#            self.assertTrue(os.path.getsize(barcode_fp) > 0)
+#
+#            metadata_fp = os.path.join(output_dir, "sample-metadata.tsv")
+#            self.assertTrue(os.path.exists(metadata_fp))
+#            self.assertTrue(os.path.getsize(metadata_fp) > 0)
 
 if __name__ == '__main__':
     main()
