@@ -13,7 +13,7 @@ import sys
 NUM_CORES = 4
 dir_path = os.path.dirname(os.path.realpath(__file__))
 
-@unittest.skip("Skipping test import because it takes long time")
+#@unittest.skip("Skipping test import because it takes long time")
 class TestImport(TestCase):
 
     def setUp(self):
