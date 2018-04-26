@@ -8,13 +8,15 @@ from click.testing import CliRunner
 
 
 NUM_CORES = 4 # Set for your system
+dir_path = os.path.dirname(os.path.realpath(__file__))
+
 """
 Integration tests
 """
 class TestDoDemux(TestCase):
     def setUp(self):
-        self.seq_fp = os.getcwd() + "/data/small/"
-        self.md_fp = os.getcwd() + "/data/small-metadata.tsv"
+        self.seq_fp = dir_path + "/data/small/"
+        self.md_fp = dir_path + "/data/small-metadata.tsv"
         self.exp_out = ["demux_small.qza"]
 
     def test_do_demux(self):
@@ -35,7 +37,7 @@ class TestDoDemux(TestCase):
 @unittest.skip("pre trim takes a long time")
 class TestPreTrims(TestCase):
     def setUp(self):
-        self.demux_fp = os.getcwd() + "/data/mock-3-demo/demux.qza"
+        self.demux_fp = dir_path + "/data/mock-3-demo/demux.qza"
         self.exp_out = ["deblurred_pre_150.qza", "deblurred_pre_135.qza",
                         "deblur.log"]
 
@@ -54,7 +56,7 @@ class TestPreTrims(TestCase):
 
 class TestPostTrims(TestCase):
     def setUp(self):
-        self.db_path = os.getcwd() + "/data/mock-3-demo/deblurred_pre_150.qza"
+        self.db_path = dir_path + "/data/mock-3-demo/deblurred_pre_150.qza"
         self.exp_out = ["deblurred_pt_150.qza", "deblurred_pt_135.qza",
                         "deblurred_pt_120.qza", "deblurred_pt_105.qza",
                         "deblurred_pt_90.qza", "collapse.csv"]
@@ -70,7 +72,7 @@ class TestPostTrims(TestCase):
 
 class TestAnalysis(TestCase):
     def setUp(self):
-        self.db_path = os.getcwd() + "/data/mock-3-done/"
+        self.db_path = dir_path + "/data/mock-3-done/"
         self.exp_out = ["pairwise_mantel.csv", "pre_post.csv", "counts.csv",
                         "read_changes.csv"]
 
@@ -87,8 +89,8 @@ class TestAnalysis(TestCase):
 class TestAll(TestCase):
     """Integration test"""
     def setUp(self):
-        self.seq_path = os.getcwd() + "/data/mock-3/emp-single-end-sequences"
-        self.md_path = os.getcwd() + "/data/mock-3/sample-metadata.tsv"
+        self.seq_path = dir_path + "/data/mock-3/emp-single-end-sequences"
+        self.md_path = dir_path + "/data/mock-3/sample-metadata.tsv"
         self.exp_out = ["demux.qza", "deblurred_pre_150.qza",
                         "deblurred_pre_135.qza", "deblur.log",
                         "deblurred_pt_150.qza", "deblurred_pt_135.qza",

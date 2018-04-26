@@ -204,7 +204,9 @@ class TestShortSeq(TestCase):
         barcode_map.index.name = "sample_name"
         barcode_map = CategoricalMetadataColumn(barcode_map)
 
-        seqs_fp = "data/small"
+        dir_path = os.path.dirname(os.path.realpath(__file__))
+        seqs_fp = dir_path + "/data/small/"
+
         seqs = Artifact.import_data("EMPSingleEndSequences",
                             seqs_fp)
 
