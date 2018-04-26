@@ -43,17 +43,25 @@ class TestDeblur(TestCase):
     def setUp(self):
         self.exp_demux = Artifact.load(dir_path + "/data/mock-3/exp_demux.qza")
         self.exp_deblurred = Artifact.load(dir_path + "/data/mock-3/deblurred_150nt.qza")
+        self.exp_deblur_biom = self.exp_deblurred.view(biom.Table)
         self.exp_deblurred_pt = Artifact.load(dir_path + "/data/mock-3/deblurred_100nt_pt.qza")
         self.num_parallel = NUM_CORES
 
     def test_establish_dataset(self):
         obs = do_deblur(self.exp_demux, 150)
-        self.assertEqual(self.exp_deblurred.view(biom.Table), obs.view(biom.Table))
+        obs_biom = obs.view(biom.Table)
+        obs_biom = obs_biom.sort_order(self.exp_deblur_biom.ids(axis='observation'), axis='observation')
+        obs_biom = obs_biom.sort_order(self.exp_deblur_biom.ids(axis='sample'), axis='sample')
+
+        self.assertEqual(self.exp_deblur_biom, obs_biom)
 
     def test_establish_dataset_ncores(self):
-        obs = do_deblur(self.exp_demux, 150,
-                        num_cores=self.num_parallel)
-        self.assertEqual(self.exp_deblurred.view(biom.Table), obs.view(biom.Table))
+        obs = do_deblur(self.exp_demux, 150, num_cores=self.num_parallel)
+        obs_biom = obs.view(biom.Table)
+        obs_biom = obs_biom.sort_order(self.exp_deblur_biom.ids(axis='observation'), axis='observation')
+        obs_biom = obs_biom.sort_order(self.exp_deblur_biom.ids(axis='sample'), axis='sample')
+
+        self.assertEqual(self.exp_deblur_biom, obs_biom)
 
 class TestPairwiseDist(TestCase):
     def setUp(self):
