@@ -13,7 +13,7 @@ import sys
 NUM_CORES = 4
 dir_path = os.path.dirname(os.path.realpath(__file__))
 
-@unittest.skip("Skipping test import because it takes long time")
+#@unittest.skip("Skipping test import because it takes long time")
 class TestImport(TestCase):
 
     def setUp(self):
@@ -23,7 +23,7 @@ class TestImport(TestCase):
 
         self.exp_demux = Artifact.load(dir_path + "/data/mock-3/exp_demux.qza")
         self.exp_out = [self.exp_demux, self.exp_barcode_metadata]
-        self.working_dir_fp = dir_path + "data/mock-3"
+        self.working_dir_fp = dir_path + "/data/mock-3"
 
     def test_import_dataset(self):
         obs = import_dataset(self.working_dir_fp, "BarcodeSequence")
@@ -37,7 +37,7 @@ class TestImport(TestCase):
                 else:
                     self.fail(str(e))
 
-@unittest.skip("Skipping test deblur because it takes long time")
+#@unittest.skip("Skipping test deblur because it takes long time")
 class TestDeblur(TestCase):
 
     def setUp(self):
