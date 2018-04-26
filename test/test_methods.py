@@ -11,6 +11,7 @@ from pandas.util.testing import assert_frame_equal
 import sys
 
 NUM_CORES = 4
+dir_path = os.path.dirname(os.path.realpath(__file__))
 
 @unittest.skip("Skipping test import because it takes long time")
 class TestImport(TestCase):
@@ -18,11 +19,11 @@ class TestImport(TestCase):
     def setUp(self):
         print("Importing metadata for expected")
         self.exp_barcode_metadata = \
-            Metadata.load("data/mock-3/sample-metadata.tsv")
+            Metadata.load(dir_path + "data/mock-3/sample-metadata.tsv")
 
-        self.exp_demux = Artifact.load("data/mock-3/exp_demux.qza")
+        self.exp_demux = Artifact.load(dir_path + "/data/mock-3/exp_demux.qza")
         self.exp_out = [self.exp_demux, self.exp_barcode_metadata]
-        self.working_dir_fp = "data/mock-3"
+        self.working_dir_fp = dir_path + "data/mock-3"
 
     def test_import_dataset(self):
         obs = import_dataset(self.working_dir_fp, "BarcodeSequence")
@@ -40,9 +41,9 @@ class TestImport(TestCase):
 class TestDeblur(TestCase):
 
     def setUp(self):
-        self.exp_demux = Artifact.load("data/mock-3/exp_demux.qza")
-        self.exp_deblurred = Artifact.load("data/mock-3/deblurred_150nt.qza")
-        self.exp_deblurred_pt = Artifact.load("data/mock-3/deblurred_100nt_pt.qza")
+        self.exp_demux = Artifact.load(dir_path + "/data/mock-3/exp_demux.qza")
+        self.exp_deblurred = Artifact.load(dir_path + "/data/mock-3/deblurred_150nt.qza")
+        self.exp_deblurred_pt = Artifact.load(dir_path + "/data/mock-3/deblurred_100nt_pt.qza")
         self.num_parallel = NUM_CORES
 
     def test_establish_dataset(self):
@@ -204,7 +205,6 @@ class TestShortSeq(TestCase):
         barcode_map.index.name = "sample_name"
         barcode_map = CategoricalMetadataColumn(barcode_map)
 
-        dir_path = os.path.dirname(os.path.realpath(__file__))
         seqs_fp = dir_path + "/data/small/"
 
         seqs = Artifact.import_data("EMPSingleEndSequences",
