@@ -32,6 +32,7 @@ class TestDoDemux(TestCase):
                              .format(result.output, result.exc_info))
             self.assertCountEqual(self.exp_out, out_files)
 
+@unittest.skip("pre trim takes a long time")
 class TestPreTrims(TestCase):
     def setUp(self):
         self.demux_fp = os.getcwd() + "/data/mock-3-demo/demux.qza"

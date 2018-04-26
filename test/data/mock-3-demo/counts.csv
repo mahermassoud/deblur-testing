@@ -1,0 +1,6 @@
+trim_length,sOTU_overlap_count,sOTU_unique_pre,sOTU_unique_post
+150,14,0,0
+135,14,0,0
+120,14,0,0
+105,13,0,1
+90,13,0,1
