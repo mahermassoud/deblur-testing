@@ -1,5 +1,7 @@
 from unittest import TestCase, main
+import unittest
 from os import listdir
+import os
 
 from scripts import *
 from click.testing import CliRunner
@@ -12,7 +14,7 @@ Integration tests
 class TestDoDemux(TestCase):
     def setUp(self):
         self.seq_fp = os.getcwd() + "/data/small/"
-        self.md_fp = os.getcwd() + "/data/small_metadata.tsv"
+        self.md_fp = os.getcwd() + "/data/small-metadata.tsv"
         self.exp_out = ["demux_small.qza"]
 
     def test_do_demux(self):
@@ -25,7 +27,9 @@ class TestDoDemux(TestCase):
                                               "BarcodeSequence"])
             out_files = listdir(os.getcwd())
 
-            self.assertEqual(0, result.exit_code, msg=result.exc_info)
+            self.assertEqual(0, result.exit_code,
+                             msg="output:\n{}\nexc.info:\n{}"\
+                             .format(result.output, result.exc_info))
             self.assertCountEqual(self.exp_out, out_files)
 
 class TestPreTrims(TestCase):
@@ -36,9 +40,6 @@ class TestPreTrims(TestCase):
 
 
     def test_pre_trims(self):
-        """
-        NOTE: this takes a long time to run ~7m on a macbook pro
-        """
         runner = CliRunner()
         with runner.isolated_filesystem():
             result = runner.invoke(pre_trims, ["-i", self.demux_fp, "-l", 150,
@@ -81,6 +82,7 @@ class TestAnalysis(TestCase):
             self.assertEqual(0, result.exit_code, msg=result.exc_info)
             self.assertCountEqual(self.exp_out, out_files)
 
+@unittest.skip("Full integration test takes a long time")
 class TestAll(TestCase):
     """Integration test"""
     def setUp(self):

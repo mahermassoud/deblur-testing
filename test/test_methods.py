@@ -1,57 +1,57 @@
 from unittest import TestCase, main
+import unittest
 from methods import *
 from qiime2 import Artifact
-from qiime2 import Metadata
-from qiime2 import MetadataCategory
+from qiime2 import MetadataColumn, CategoricalMetadataColumn
 from qiime2.plugins.demux.methods import emp_single
-import tempfile
-import os
 import biom
 import numpy as np
 from numpy.testing import assert_array_almost_equal
 from pandas.util.testing import assert_frame_equal
+import sys
 
 NUM_CORES = 4
 
-# Commented out because it takes a while
-#class TestImport(TestCase):
-#
-#    def setUp(self):
-#        print("Importing metadata for expected")
-#        self.exp_barcode_metadata = \
-#            Metadata.load("data/mock-3/sample-metadata.tsv")
-#
-#        self.exp_demux = Artifact.load("data/mock-3/exp_demux.qza")
-#        self.exp_out = [self.exp_demux, self.exp_barcode_metadata]
-#        self.working_dir_fp = "data/mock-3"
-#
-#    def test_import_dataset(self):
-#        obs = import_dataset(self.working_dir_fp, "BarcodeSequence")
-#        for i, entry in enumerate(obs):
-#            try:
-#                self.assertEqual(entry, self.exp_out[i])
-#            except AssertionError as e:
-#                # TODO fix this
-#                if("uuid" in str(e)): # uuid is always unique so we expect this
-#                    continue
-#                else:
-#                    self.fail(str(e))
-#
-#class TestDeblur(TestCase):
-#
-#    def setUp(self):
-#        self.exp_demux = Artifact.load("data/mock-3/exp_demux.qza")
-#        self.exp_deblurred = Artifact.load("data/mock-3/deblurred_150nt.qza")
-#        self.exp_deblurred_pt = Artifact.load("data/mock-3/deblurred_100nt_pt.qza")
-#        self.num_parallel = NUM_CORES
-#
-#    def test_establish_dataset(self):
-#        obs = do_deblur(self.exp_demux, 150)
-#        self.assertEqual(self.exp_deblurred.view(biom.Table), obs.view(biom.Table))
-#
-#    def test_establish_dataset_ncores(self):
-#        obs = do_deblur(self.exp_demux, 150,
-#                        num_cores=self.num_parallel)
+#@unittest.skip("Skipping test import because it takes long time")
+class TestImport(TestCase):
+
+    def setUp(self):
+        print("Importing metadata for expected")
+        self.exp_barcode_metadata = \
+            Metadata.load("data/mock-3/sample-metadata.tsv")
+
+        self.exp_demux = Artifact.load("data/mock-3/exp_demux.qza")
+        self.exp_out = [self.exp_demux, self.exp_barcode_metadata]
+        self.working_dir_fp = "data/mock-3"
+
+    def test_import_dataset(self):
+        obs = import_dataset(self.working_dir_fp, "BarcodeSequence")
+        for i, entry in enumerate(obs):
+            try:
+                self.assertEqual(entry, self.exp_out[i])
+            except AssertionError as e:
+                # TODO fix this
+                if("uuid" in str(e)): # uuid is always unique so we expect this
+                    continue
+                else:
+                    self.fail(str(e))
+
+#@unittest.skip("Skipping test deblur because it takes long time")
+class TestDeblur(TestCase):
+
+    def setUp(self):
+        self.exp_demux = Artifact.load("data/mock-3/exp_demux.qza")
+        self.exp_deblurred = Artifact.load("data/mock-3/deblurred_150nt.qza")
+        self.exp_deblurred_pt = Artifact.load("data/mock-3/deblurred_100nt_pt.qza")
+        self.num_parallel = NUM_CORES
+
+    def test_establish_dataset(self):
+        obs = do_deblur(self.exp_demux, 150)
+        self.assertEqual(self.exp_deblurred.view(biom.Table), obs.view(biom.Table))
+
+    def test_establish_dataset_ncores(self):
+        obs = do_deblur(self.exp_demux, 150,
+                        num_cores=self.num_parallel)
         self.assertEqual(self.exp_deblurred.view(biom.Table), obs.view(biom.Table))
 
 class TestPairwiseDist(TestCase):
@@ -151,7 +151,7 @@ class TestPrePostDist(TestCase):
         assert_frame_equal(self.exp_100, obs)
 
     def test_get_pre_post_distances(self):
-        obs = get_pre_post_distance_data([self.pre_100, self.pre_50],
+        obs, po, pto = get_pre_post_distance_data([self.pre_100, self.pre_50],
                                          [self.post_100, self.post_50],
                                          [100, 50])
         obs.index = list(range(obs.shape[0]))
@@ -169,7 +169,7 @@ class TestPostTrim(TestCase):
         self.exp_pt = biom.Table(np.array([[7,7,10,17],[8,9,10,11]]),
                             ['AAT', 'ATG'], ['S1', 'S2', 'S3', 'S4'])
         self.exp_md = ["AATT", "AATG", "AATC"]
-        self.exp_clps = pd.DataFrame({"otu": ["AAT", "ATG"], "length": [3, 3],
+        self.exp_clps = pd.DataFrame({"seq": ["AAT", "ATG"], "length": [3, 3],
                                       "num_collapses": [3, 1]})
 
     def test_post_trim(self):
@@ -188,14 +188,21 @@ class TestPostTrim(TestCase):
 
     def test_get_collapse_count(self):
         obs = get_collapse_counts([post_trim(self.t, 3)])
+        obs = obs.sort_values(by=["seq"])
+        obs.index = [0, 1]
+        print(obs)
+        exp_srt = self.exp_clps.sort_values(by=["seq"])
+        exp_srt.index = [0, 1]
+        print(exp_srt)
 
-        assert_frame_equal(self.exp_clps, obs, check_like=True)
+        assert_frame_equal(exp_srt, obs)
 
 class TestShortSeq(TestCase):
     def setUp(self):
         barcode_map = pd.Series(['GTCA', 'TCAG', 'GGGG'],
-                   index=['sample1', 'sample2', 'sample3'])
-        barcode_map = MetadataCategory(barcode_map)
+                   index=['sample1', 'sample2', 'sample3'], name="aname")
+        barcode_map.index.name = "sample_name"
+        barcode_map = CategoricalMetadataColumn(barcode_map)
 
         seqs_fp = "data/small"
         seqs = Artifact.import_data("EMPSingleEndSequences",
@@ -269,49 +276,6 @@ class TestGetCountData(TestCase):
         assert_frame_equal(self.exp_cdata, obs_cdata)
         assert_frame_equal(self.exp_rps, obs_rps, check_dtype=False)
 
-# Tests for methods specific to mockrobiota
-#class TestMockMethods(TestCase):
-#
-#    def setUp(self):
-#        self.MOCK6_FORWARD_URL = "https://s3-us-west-2.amazonaws.com/mockrobiota/latest/mock-6/mock-forward-read.fastq.gz"
-#        self.MOCK6_BARCODE_URL = "https://s3-us-west-2.amazonaws.com/mockrobiota/latest/mock-6/mock-index-read.fastq.gz"
-#        self.MOCK6_DATASET_METADATA_URL = "https://raw.githubusercontent.com/caporaso-lab/mockrobiota/master/data/mock-6/dataset-metadata.tsv"
-#
-#        # Since mock-3 is small
-#        self.MOCK3_FORWARD_URL = "https://s3-us-west-2.amazonaws.com/mockrobiota/latest/mock-3/mock-forward-read.fastq.gz"
-#        self.MOCK3_BARCODE_URL = "https://s3-us-west-2.amazonaws.com/mockrobiota/latest/mock-3/mock-index-read.fastq.gz"
-#        self.MOCK3_SAMPLE_METADATA_URL = "https://raw.githubusercontent.com/caporaso-lab/mockrobiota/master/data/mock-3/sample-metadata.tsv"
-#
-#    def test_get_dl_urls_pass(self):
-#        with tempfile.TemporaryDirectory() as output_dir:
-#            obs = get_dl_urls(self.MOCK6_DATASET_METADATA_URL, output_dir)
-#
-#        exp = [self.MOCK6_FORWARD_URL, self.MOCK6_BARCODE_URL]
-#        for i, entry in enumerate(obs):
-#            self.assertEqual(entry, exp[i])
-#
-#    def test_get_dl_urls_fail(self):
-#        with self.assertRaises(Exception) as context:
-#            get_dl_urls("asdf","asdf")
-#
-#    def test_download_mock_dataset(self):
-#        with tempfile.TemporaryDirectory() as output_dir:
-#            download_mock_dataset(output_dir, self.MOCK3_FORWARD_URL,
-#                                  self.MOCK3_BARCODE_URL,
-#                                  self.MOCK3_SAMPLE_METADATA_URL)
-#            forward_fp = os.path.join(output_dir, "emp-single-end-sequences",
-#                                      "sequences.fastq.gz")
-#            self.assertTrue(os.path.exists(forward_fp))
-#            self.assertTrue(os.path.getsize(forward_fp) > 0)
-#
-#            barcode_fp = os.path.join(output_dir, "emp-single-end-sequences",
-#                                      "barcodes.fastq.gz")
-#            self.assertTrue(os.path.exists(barcode_fp))
-#            self.assertTrue(os.path.getsize(barcode_fp) > 0)
-#
-#            metadata_fp = os.path.join(output_dir, "sample-metadata.tsv")
-#            self.assertTrue(os.path.exists(metadata_fp))
-#            self.assertTrue(os.path.getsize(metadata_fp) > 0)
 
 if __name__ == '__main__':
     main()

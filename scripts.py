@@ -68,7 +68,7 @@ def do_demux_art(input_fp, metadata, metadata_bc_col, rev_bc, rev_map_bc, output
 
     print("Demuxing")
     demux, = emp_single(art,
-                        barcode_metadata.get_category(metadata_bc_col),
+                        barcode_metadata.get_column(metadata_bc_col),
                         rev_comp_barcodes=rev_bc,
                         rev_comp_mapping_barcodes=rev_map_bc)
 

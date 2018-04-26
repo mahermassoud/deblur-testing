@@ -6,7 +6,8 @@ setup(
     py_modules=['scripts'],
     install_requires=[
         'Click',
-        'qiime2'
+        'qiime2 >= 2018.2.*',
+        'wget'
     ],
     entry_points='''
         [console_scripts]
