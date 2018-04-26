@@ -19,7 +19,7 @@ class TestImport(TestCase):
     def setUp(self):
         print("Importing metadata for expected")
         self.exp_barcode_metadata = \
-            Metadata.load(dir_path + "data/mock-3/sample-metadata.tsv")
+            Metadata.load(dir_path + "/data/mock-3/sample-metadata.tsv")
 
         self.exp_demux = Artifact.load(dir_path + "/data/mock-3/exp_demux.qza")
         self.exp_out = [self.exp_demux, self.exp_barcode_metadata]
