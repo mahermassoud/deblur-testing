@@ -5,7 +5,7 @@ import methods
 import seaborn as sns
 import matplotlib.pyplot as plt
 import biom
-import glob
+import time
 import os
 import re
 import pandas as pd
@@ -56,6 +56,7 @@ def do_demux_art(input_fp, metadata, metadata_bc_col, rev_bc, rev_map_bc, output
     Metadata
         Associated metadata
     """
+    start = time.clock()
     if(input_fp is None or metadata is None or metadata_bc_col is None):
         click.echo("Run \'rdemux --help\' flag to see correct usage")
         return
@@ -63,10 +64,10 @@ def do_demux_art(input_fp, metadata, metadata_bc_col, rev_bc, rev_map_bc, output
     click.echo("Importing seq data from " + input_fp)
     art = Artifact.import_data("EMPSingleEndSequences", input_fp)
 
-    print("Loading metadata from " + metadata)
+    click.echo("Loading metadata from " + metadata)
     barcode_metadata = Metadata.load(metadata)
 
-    print("Demuxing")
+    click.echo("Demuxing")
     demux, = emp_single(art,
                         barcode_metadata.get_column(metadata_bc_col),
                         rev_comp_barcodes=rev_bc,
@@ -77,6 +78,7 @@ def do_demux_art(input_fp, metadata, metadata_bc_col, rev_bc, rev_map_bc, output
     else:
         demux.save(output_fp)
 
+    click.echo("{}s for do_demux".format(str(time.clock() - start)))
     return demux, barcode_metadata
 
 @click.command()
@@ -118,12 +120,14 @@ def pre_trims(input_fp, trim_length, trim_incr,
     -------
     list of length trim_lengths of deblurred seq artifacts
     """
+    start = time.clock()
     click.echo("Importing seq data from " + input_fp)
     input_artifact = Artifact.load(input_fp)
 
     if output_fp.endswith('/'):
         output_fp = output_fp[:-1]
 
+    click.echo("{}s for importing for pre".format(str(time.clock() - start)))
     return pre_trims_art(input_artifact, trim_length, trim_incr, num_trims,
                          output_fp, num_cores)
 
@@ -153,6 +157,7 @@ def pre_trims_art(input_artifact, trim_length= 100, trim_incr = 10,
     -------
     list of length trim_lengths of deblurred seq artifacts
     """
+    start = time.clock()
     if(trim_length is None):
         click.echo("Determining max possible trim length")
         trim_length = methods.get_shortest_seq(input_artifact)
@@ -161,11 +166,13 @@ def pre_trims_art(input_artifact, trim_length= 100, trim_incr = 10,
 
     deblurreds = []
     for l in trim_lengths:
+        click.echo("Pre-trimming to length {}".format(str(l)))
         db_out = methods.do_deblur(input_artifact, l, num_cores=num_cores)
         deblurreds.append(db_out)
         if(output_fp is not None):
             db_out.save(output_fp + "/deblurred_pre_" + str(l) + ".qza")
 
+    click.echo("{}s for pre_trims".format(str(time.clock() - start)))
     return deblurreds
 
 @click.command()
@@ -180,12 +187,14 @@ def pre_trims_art(input_artifact, trim_length= 100, trim_incr = 10,
               required=True,
               help='Path to output post-trimmed qza files, and collapse.csv')
 def post_trims(input_fp, trim_incr, num_trims, output_fp):
+    start = time.clock()
     click.echo("Importing seq data from " + input_fp)
     input_artifact = Artifact.load(input_fp)
 
     if output_fp.endswith('/'):
         output_fp = output_fp[:-1]
 
+    click.echo("{}s for importing for post_trims".format(str(time.clock() - start)))
     return post_trims_art(output_fp, input_artifact, trim_incr, num_trims)
 
 
@@ -218,7 +227,7 @@ def post_trims_art(output_fp, input_artifact = None, trim_incr = 10,
     type FeatureTable[Frequency]
     pandas.DataFrame of collapse data
     """
-    print(input_artifact)
+    start = time.clock()
     input_biom = input_artifact.view(biom.Table)
     otus = input_biom.ids(axis="observation")
     trim_length = len(otus[0])
@@ -232,6 +241,7 @@ def post_trims_art(output_fp, input_artifact = None, trim_incr = 10,
     pt_bioms = []
     pt_arts = []
     for l in trim_lengths:
+        click.echo("Post-trimming to length {}".format(str(l)))
         pt_biom = methods.post_trim(input_biom, l)
         pt_bioms.append(pt_biom)
         pt_artifact = Artifact.import_data("FeatureTable[Frequency]", pt_biom)
@@ -242,6 +252,7 @@ def post_trims_art(output_fp, input_artifact = None, trim_incr = 10,
     clps = methods.get_collapse_counts(pt_bioms)
     clps.to_csv(output_fp + "/collapse.csv", index=False)
 
+    click.echo("{}s for post_trims".format(str(time.clock() - start)))
     return pt_arts, clps
 
 @click.command()
@@ -258,6 +269,7 @@ def post_trims_art(output_fp, input_artifact = None, trim_incr = 10,
               help='Number of lengths to trim to, default 5')
 def analysis(input_fp, output_fp, trim_incr, num_trims):
 
+    start = time.clock()
     if input_fp.endswith('/'):
         input_fp = input_fp[:-1]
     if output_fp.endswith('/'):
@@ -288,6 +300,8 @@ def analysis(input_fp, output_fp, trim_incr, num_trims):
     post_artifacts.reverse()
 
     clps_df = pd.read_csv(input_fp + "/collapse.csv")
+    click.echo("{}s for loading qza's for analysis"\
+               .format(str(time.clock() - start)))
 
     return analysis_art(pre_artifacts, post_artifacts, clps_df,
                         trim_incr, num_trims, output_fp)
@@ -324,6 +338,7 @@ def analysis_art(pre_artifacts, post_artifacts, clps_df, trim_incr=10,
     pandas DataFrame of sOTU and sample counts
     pandas DataFrame of changes in reads per sample from pre to post (pre-post)
     """
+    start = time.clock()
     pre_bioms = [art.view(biom.Table) for art in pre_artifacts]
     post_bioms = [art.view(biom.Table) for art in post_artifacts]
 
@@ -331,13 +346,16 @@ def analysis_art(pre_artifacts, post_artifacts, clps_df, trim_incr=10,
     length = len(otus[0])
     trim_lengths, prc = calculate_trim_lengths(length, trim_incr,num_trims)
 
+    click.echo("Calculating pairwise diversity")
     pairwise_mantel = methods.get_pairwise_diversity_data(pre_bioms, post_bioms,
                                                           trim_lengths)
+    click.echo("Calculating pre-post distances")
     pre_post, pre_overlaps, post_overlaps = \
         methods.get_pre_post_distance_data(pre_bioms, post_bioms, trim_lengths)
     # merge pre_post with collapse data so we can perform correlation
     pre_post = pd.merge(pre_post, clps_df[["seq","num_collapses"]], on="seq")
 
+    click.echo("Calculating count info")
     counts, read_changes = methods.get_count_data(pre_bioms, pre_overlaps,
                                                   post_bioms, post_overlaps,
                                                   trim_lengths)
@@ -348,6 +366,7 @@ def analysis_art(pre_artifacts, post_artifacts, clps_df, trim_incr=10,
         counts.to_csv(output_fp + "/counts.csv", index=False)
         read_changes.to_csv(output_fp + "/read_changes.csv", index=False)
 
+    click.echo("{}s for analysis".format(str(time.clock() - start)))
     return pairwise_mantel, pre_post, counts, read_changes
 
 @click.command()
@@ -357,6 +376,7 @@ def analysis_art(pre_artifacts, post_artifacts, clps_df, trim_incr=10,
 @click.option('-o', '--output-fp',type=click.Path(file_okay=False,exists=True),
               default = None, required=False, help='Path to output csv files')
 def do_plots(input_fp, output_fp):
+    start = time.clock()
     if input_fp.endswith('/'):
         input_fp = input_fp[:-1]
     if output_fp.endswith('/'):
@@ -366,6 +386,8 @@ def do_plots(input_fp, output_fp):
     pre_post = pd.read_csv(input_fp + "/pre_post.csv")
     counts = pd.read_csv(input_fp + "/counts.csv")
     read_changes = pd.read_csv(input_fp + "/read_changes.csv")
+
+    click.echo("{}s for importing data for plots".format(str(time.clock() - start)))
 
     return plot_pd(pairwise_mantel, pre_post, counts, read_changes, output_fp)
 
@@ -385,6 +407,7 @@ def plot_pd(pairwise_mantel, pre_post, counts, read_changes, output_fp = None):
     -------
     pyplot figure of each respective plot
     """
+    start = time.clock()
     mantel_plot = sns.lmplot(x="trim_length", y="r_sq", row="dist_type", hue="dist_type",
                              data=pairwise_mantel, ci=None, fit_reg=False)
     mantel_plot.set(xlabel="Trim Length")
@@ -427,6 +450,8 @@ def plot_pd(pairwise_mantel, pre_post, counts, read_changes, output_fp = None):
 
     if output_fp is not None:
         plt.savefig(output_fp + "/read_changes.png")
+
+    click.echo("{}s for plotting".format(str(time.clock() - start)))
 
 @click.command()
 @click.option("-i", "--input-fp", required=True,
