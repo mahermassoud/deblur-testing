@@ -120,12 +120,14 @@ def pre_trims(input_fp, trim_length, trim_incr,
     -------
     list of length trim_lengths of deblurred seq artifacts
     """
+    start = time.clock()
     click.echo("Importing seq data from " + input_fp)
     input_artifact = Artifact.load(input_fp)
 
     if output_fp.endswith('/'):
         output_fp = output_fp[:-1]
 
+    click.echo("{}s for importing for pre".format(str(time.clock() - start)))
     return pre_trims_art(input_artifact, trim_length, trim_incr, num_trims,
                          output_fp, num_cores)
 
@@ -185,12 +187,14 @@ def pre_trims_art(input_artifact, trim_length= 100, trim_incr = 10,
               required=True,
               help='Path to output post-trimmed qza files, and collapse.csv')
 def post_trims(input_fp, trim_incr, num_trims, output_fp):
+    start = time.clock()
     click.echo("Importing seq data from " + input_fp)
     input_artifact = Artifact.load(input_fp)
 
     if output_fp.endswith('/'):
         output_fp = output_fp[:-1]
 
+    click.echo("{}s for importing for post_trims".format(str(time.clock() - start)))
     return post_trims_art(output_fp, input_artifact, trim_incr, num_trims)
 
 
@@ -296,6 +300,8 @@ def analysis(input_fp, output_fp, trim_incr, num_trims):
     post_artifacts.reverse()
 
     clps_df = pd.read_csv(input_fp + "/collapse.csv")
+    click.echo("{}s for loading qza's for analysis"\
+               .format(str(time.clock() - start)))
 
     return analysis_art(pre_artifacts, post_artifacts, clps_df,
                         trim_incr, num_trims, output_fp)
@@ -370,6 +376,7 @@ def analysis_art(pre_artifacts, post_artifacts, clps_df, trim_incr=10,
 @click.option('-o', '--output-fp',type=click.Path(file_okay=False,exists=True),
               default = None, required=False, help='Path to output csv files')
 def do_plots(input_fp, output_fp):
+    start = time.clock()
     if input_fp.endswith('/'):
         input_fp = input_fp[:-1]
     if output_fp.endswith('/'):
@@ -379,6 +386,8 @@ def do_plots(input_fp, output_fp):
     pre_post = pd.read_csv(input_fp + "/pre_post.csv")
     counts = pd.read_csv(input_fp + "/counts.csv")
     read_changes = pd.read_csv(input_fp + "/read_changes.csv")
+
+    click.echo("{}s for importing data for plots".format(str(time.clock() - start)))
 
     return plot_pd(pairwise_mantel, pre_post, counts, read_changes, output_fp)
 
@@ -398,6 +407,7 @@ def plot_pd(pairwise_mantel, pre_post, counts, read_changes, output_fp = None):
     -------
     pyplot figure of each respective plot
     """
+    start = time.clock()
     mantel_plot = sns.lmplot(x="trim_length", y="r_sq", row="dist_type", hue="dist_type",
                              data=pairwise_mantel, ci=None, fit_reg=False)
     mantel_plot.set(xlabel="Trim Length")
@@ -440,6 +450,8 @@ def plot_pd(pairwise_mantel, pre_post, counts, read_changes, output_fp = None):
 
     if output_fp is not None:
         plt.savefig(output_fp + "/read_changes.png")
+
+    click.echo("{}s for plotting".format(str(time.clock() - start)))
 
 @click.command()
 @click.option("-i", "--input-fp", required=True,
