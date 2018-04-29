@@ -482,6 +482,7 @@ def pre_post(input_fp, metadata, metadata_bc_col, rev_bc, rev_map_bc,
     """Runs the entire pre_post analysis pipeline from demux to plotting,
     defaults to output EVERYTHING
     """
+    start = time.clock()
     demux, bc_md = do_demux_art(input_fp, metadata, metadata_bc_col, rev_bc,
                             rev_map_bc, output_fp + "/demux.qza")
 
@@ -495,6 +496,7 @@ def pre_post(input_fp, metadata, metadata_bc_col, rev_bc, rev_map_bc,
         analysis_art(pre_arts, pt_arts, clps, trim_incr, num_trims, output_fp)
 
     plot_pd(pw_mantel, pre_post, counts, read_changes, output_fp)
+    click.echo("{}s for entire pre_post()".format(str(time.clock()-start)))
 
 def calculate_trim_lengths(length, trim_incr, num_trims):
     """Returns list of lengths we will trim to. Each trim_incr percent less
