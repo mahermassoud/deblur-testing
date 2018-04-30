@@ -17,6 +17,7 @@ setup(
         ranalysis=scripts:analysis
         rplot=scripts:do_plots
         rall=scripts:pre_post
+        sbiom=scripts:biom_to_post
     ''',
 )
 
