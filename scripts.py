@@ -198,8 +198,8 @@ def post_trims(input_fp, trim_incr, num_trims, output_fp):
     return post_trims_art(output_fp, input_artifact, trim_incr, num_trims)
 
 
-def post_trims_art(output_fp, input_artifact = None, trim_incr = 10,
-               num_trims = 5):
+def post_trims_art(output_fp, input_artifact=None, trim_incr=10,
+                   num_trims=5, trim_lengths=None):
     """Post trims to various specified lengths.
     Saves qza's if specified. With naming format "deblurred_pt_<length>.qza
     eg. If input is length 100, trim_incr=10 and num_trims=5, post trims to
@@ -207,8 +207,6 @@ def post_trims_art(output_fp, input_artifact = None, trim_incr = 10,
 
     Parameters
     ----------
-    clps_fp: str
-        Path to where we write out collapse data file
     input_fp: str
         Path to qza of demuxed sequences. Either this or input_artifact
         must be supplied.
@@ -220,6 +218,8 @@ def post_trims_art(output_fp, input_artifact = None, trim_incr = 10,
         Number of different lengths to trim to. Each trim_incr % less.
     output_fp: path, optional
         Path to output deblurred qza files
+    trim_lengths: array_like of INT
+        lengths we are trimming to
 
     Returns
     -------
@@ -236,8 +236,9 @@ def post_trims_art(output_fp, input_artifact = None, trim_incr = 10,
             raise ValueError("Input table reads are not all same length. Invalid")
             return
 
-    trim_lengths, percent = calculate_trim_lengths(trim_length, trim_incr, num_trims)
-
+    if(trim_lengths is None):
+        trim_lengths, percent = calculate_trim_lengths(trim_length, trim_incr,
+                                                       num_trims)
     pt_bioms = []
     pt_arts = []
     for l in trim_lengths:
@@ -308,7 +309,7 @@ def analysis(input_fp, output_fp, trim_incr, num_trims):
 
 
 def analysis_art(pre_artifacts, post_artifacts, clps_df, trim_incr=10,
-                 num_trims=5, output_fp = None):
+                 num_trims=5, output_fp=None, trim_lengths=None):
     """Returns analysis data on pre/post artifacts
 
     Parameters
@@ -329,6 +330,8 @@ def analysis_art(pre_artifacts, post_artifacts, clps_df, trim_incr=10,
         Should correspond to input artifacts
     output_fp: str
         Path to directory which output tsv's are saved, should not end with /
+    trim_lengths: array_like of type INT
+        list of lenghts we are trimming to
 
     Returns
     -------
@@ -342,9 +345,10 @@ def analysis_art(pre_artifacts, post_artifacts, clps_df, trim_incr=10,
     pre_bioms = [art.view(biom.Table) for art in pre_artifacts]
     post_bioms = [art.view(biom.Table) for art in post_artifacts]
 
-    otus = pre_bioms[0].ids(axis="observation")
-    length = len(otus[0])
-    trim_lengths, prc = calculate_trim_lengths(length, trim_incr,num_trims)
+    if(trim_lengths is None):
+        otus = pre_bioms[0].ids(axis="observation")
+        length = len(otus[0])
+        trim_lengths, prc = calculate_trim_lengths(length, trim_incr,num_trims)
 
     click.echo("Calculating pairwise diversity")
     pairwise_mantel = methods.get_pairwise_diversity_data(pre_bioms, post_bioms,
@@ -499,6 +503,42 @@ def pre_post(input_fp, metadata, metadata_bc_col, rev_bc, rev_map_bc,
     plot_pd(pw_mantel, pre_post, counts, read_changes, output_fp)
     click.echo("{}s for entire pre_post()".format(str(time.clock()-start)))
 
+@click.command()
+@click.option("-i", "--input-fp", required=True,
+              type=click.Path(dir_okay=False, exists=True),
+              help="Paths to pre_trimmed seqs in .biom format", multiple=True)
+@click.option("-o", "--output-fp", required=True,
+              type=click.Path(file_okay=False),
+              help="Directory where we will output everything, see other"
+                   " functions to see output formats. demux as demux.qza")
+def biom_to_post(input_fp, output_fp):
+    """Runs the analysis pipeline starting from pre trimmed .biom files
+    """
+    start = time.clock()
+
+    pre_arts = []
+    pre_bioms = []
+    lengths = []
+    for fp in input_fp:
+        as_biom = biom.load_table(fp)
+        lengths.append(get_length_biom(as_biom))
+        pre_bioms.append(as_biom)
+        pre_arts.append(Artifact.import_data("FeatureTable[Frequency]",
+                                             as_biom))
+
+    # Sort in descending order by length
+    pre_arts = [x for _,x in sorted(zip(lengths, pre_arts), reverse=True)]
+
+    pt_arts, clps = post_trims_art(output_fp, pre_arts[0],
+                                   trim_lengths=lengths)
+
+    pw_mantel, pre_post, counts, read_changes = \
+        analysis_art(pre_arts, pt_arts, clps, trim_lengths=lengths,
+                     output_fp=output_fp)
+
+    plot_pd(pw_mantel, pre_post, counts, read_changes, output_fp)
+    click.echo("{}s for entire biom_post()".format(str(time.clock()-start)))
+
 def calculate_trim_lengths(length, trim_incr, num_trims):
     """Returns list of lengths we will trim to. Each trim_incr percent less
     eg. if length=100, trim_incr=10, num_trims=3, outputs [100,90,80]
@@ -528,3 +568,24 @@ def calculate_trim_lengths(length, trim_incr, num_trims):
         percent = percent - trim_incr
 
     return trim_lengths, percents
+
+def get_length_biom(a_biom):
+    """Returns length of sequences in a bio table
+
+    Parameters
+    ----------
+    a_biom: biom.Table
+        biom.Table whose seq length we want
+
+    Returns
+    -------
+    Length of the seqs in input
+    """
+    otus = a_biom.ids(axis="observation")
+    trim_length = len(otus[0])
+    for otu in otus:
+        if(len(otu) != trim_length):
+            raise ValueError("Input table reads are not all same length. Invalid")
+            return
+
+    return trim_length
