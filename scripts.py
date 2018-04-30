@@ -482,6 +482,7 @@ def pre_post(input_fp, metadata, metadata_bc_col, rev_bc, rev_map_bc,
     """Runs the entire pre_post analysis pipeline from demux to plotting,
     defaults to output EVERYTHING
     """
+    click.echo("pre_post() starting at " + time.strftime("[%H:%M:%S]"))
     start = time.clock()
     demux, bc_md = do_demux_art(input_fp, metadata, metadata_bc_col, rev_bc,
                             rev_map_bc, output_fp + "/demux.qza")
