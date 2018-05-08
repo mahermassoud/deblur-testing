@@ -377,8 +377,8 @@ def analysis_art(pre_artifacts, post_artifacts, clps_df, trim_incr=10,
 @click.option("-i","--input-fp", type=click.Path(exists=True, file_okay=False),
               required=True,
               help="Path to directory holding csv files made by analysis")
-@click.option('-o', '--output-fp',type=click.Path(file_okay=False,exists=True),
-              default = None, required=False, help='Path to output csv files')
+@click.option('-o', '--output-fp',type=click.Path(file_okay=False, exists=True),
+              default=None, required=False, help='Path to output csv files')
 def do_plots(input_fp, output_fp):
     start = time.clock()
     if input_fp.endswith('/'):
@@ -515,6 +515,9 @@ def biom_to_post(input_fp, output_fp):
     """
     start = time.clock()
 
+    if output_fp.endswith('/'):
+        output_fp = output_fp[:-1]
+
     pre_arts = []
     pre_bioms = []
     lengths = []
@@ -522,21 +525,37 @@ def biom_to_post(input_fp, output_fp):
         as_biom = biom.load_table(fp)
         lengths.append(get_length_biom(as_biom))
         pre_bioms.append(as_biom)
-        pre_arts.append(Artifact.import_data("FeatureTable[Frequency]",
-                                             as_biom))
+        as_artifact = Artifact.import_data("FeatureTable[Frequency]", as_biom)
+        as_artifact.save(output_fp + "/" + os.path.basename(fp))
+        pre_arts.append(as_artifact)
 
     # Sort in descending order by length
     pre_arts = [x for _,x in sorted(zip(lengths, pre_arts), reverse=True)]
 
-    pt_arts, clps = post_trims_art(output_fp, pre_arts[0],
-                                   trim_lengths=lengths)
+    #pt_arts, clps = post_trims_art(output_fp, pre_arts[0],
+    #                               trim_lengths=lengths)
 
     pw_mantel, pre_post, counts, read_changes = \
-        analysis_art(pre_arts, pt_arts, clps, trim_lengths=lengths,
+        analysis_art(pre_arts, None, None, trim_lengths=lengths,
                      output_fp=output_fp)
 
-    plot_pd(pw_mantel, pre_post, counts, read_changes, output_fp)
-    click.echo("{}s for entire biom_post()".format(str(time.clock()-start)))
+    #plot_pd(pw_mantel, pre_post, counts, read_changes, output_fp)
+    #click.echo("{}s for entire biom_post()".format(str(time.clock()-start)))
+
+@click.command()
+@click.option("-i", "--input-fp", type=click.Path(dir_okay=False, exists=True),
+              required=True, help="Path to .biom file we want to convert")
+@click.option("-o", "--output-fp", type=click.Path(dir_okay=False),
+              required=True, help="Path we will output qza to, extension optional")
+def biom_to_qiime(input_fp, output_fp):
+    if output_fp.endswith('/'):
+        output_fp = output_fp[:-1]
+
+    as_biom = biom.load_table(input_fp)
+    as_artifact = Artifact.import_data("FeatureTable[Frequency]", as_biom)
+    as_artifact.save(output_fp)
+
+
 
 def calculate_trim_lengths(length, trim_incr, num_trims):
     """Returns list of lengths we will trim to. Each trim_incr percent less

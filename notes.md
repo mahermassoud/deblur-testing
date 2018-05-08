@@ -57,3 +57,6 @@
 - google torque examples
 - screen / tmux for running mutliple different shells
 - run unit tests on new environment-- figure out how to do on terminal
+
+# Notes 5/6/18
+modify ranalysis so you can run it on different trim lengths
