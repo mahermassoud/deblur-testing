@@ -342,6 +342,7 @@ def analysis_art(pre_artifacts, post_artifacts, clps_df, trim_incr=10,
     pandas DataFrame of changes in reads per sample from pre to post (pre-post)
     """
     start = time.clock()
+    print("Enter analysis_art")
     pre_bioms = [art.view(biom.Table) for art in pre_artifacts]
     post_bioms = [art.view(biom.Table) for art in post_artifacts]
 
@@ -486,6 +487,7 @@ def pre_post(input_fp, metadata, metadata_bc_col, rev_bc, rev_map_bc,
     """Runs the entire pre_post analysis pipeline from demux to plotting,
     defaults to output EVERYTHING
     """
+    click.echo("pre_post() starting at " + time.strftime("[%H:%M:%S]"))
     start = time.clock()
     demux, bc_md = do_demux_art(input_fp, metadata, metadata_bc_col, rev_bc,
                             rev_map_bc, output_fp + "/demux.qza")

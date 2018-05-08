@@ -14,8 +14,9 @@
 
 #PBS -k oe
 
-source activate q2env
-rall -i /panfs/panfs1.ucsd.edu/panscratch/mamaher/deblur-testing/test/data/mock-3/emp-single-end-sequences -m /panfs/panfs1.ucsd.edu/panscratch/mamaher/deblur-testing/test/data/mock-3/sample-metadata.tsv -mbc BarcodeSequence -l 150 -nc 3 -o /panfs/panfs1.ucsd.edu/panscratch/mamaher/rall_out/
+time source activate q2env
+echo $(date +"%T")
+time rall -i /panfs/panfs1.ucsd.edu/panscratch/mamaher/deblur-testing/test/data/mock-3/emp-single-end-sequences -m /panfs/panfs1.ucsd.edu/panscratch/mamaher/deblur-testing/test/data/mock-3/sample-metadata.tsv -mbc BarcodeSequence -l 150 -nc 3 -o /panfs/panfs1.ucsd.edu/panscratch/mamaher/rall_out/
 
 
 # comment PBS -o /home/mamaher/dbt_job_out

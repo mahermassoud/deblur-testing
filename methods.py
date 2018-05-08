@@ -260,6 +260,8 @@ def get_pre_post_distance_data(pre_bioms, post_bioms, trim_lengths):
     pre_overlaps = []
     post_overlaps = []
     all_dists = pd.DataFrame()
+    print("len(pre_bioms): {}".format(len(pre_bioms)))
+    print("len(post_bioms): {}".format(len(post_bioms)))
     for i in range(len(pre_bioms)):
         # pre-post distances
         pre_overlap_biom, post_overlap_biom = \
@@ -268,8 +270,14 @@ def get_pre_post_distance_data(pre_bioms, post_bioms, trim_lengths):
         pre_overlaps.append(pre_overlap_biom)
         post_overlaps.append(post_overlap_biom)
 
+        print("len(pre_overlaps): {}".format(len(pre_overlaps)))
+        print("len(post_overlaps): {}".format(len(post_overlaps)))
+
         dists = get_distance_distribution(pre_overlap_biom,
                                                   post_overlap_biom)
+        
+        print("i: {}, dists: {}".format(str(i), str(dists)))
+
         dists["length"] = trim_lengths[i]
         all_dists = all_dists.append(dists)
 
