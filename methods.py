@@ -280,7 +280,9 @@ def get_pre_post_distance_data(pre_bioms, post_bioms, trim_lengths):
 
         dists["length"] = trim_lengths[i]
         all_dists = all_dists.append(dists)
+        print("all_dists:\n{}".format(str(all_dists)))
 
+    print("final all_dists:\n{}".format(str(all_dists)))
     return all_dists, pre_overlaps, post_overlaps
 
 def get_pairwise_diversity_data(pre_bioms, post_bioms, trim_lengths):
