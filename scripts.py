@@ -448,6 +448,7 @@ def plot_pd(pairwise_mantel, pre_post, counts, read_changes, output_fp = None):
     plt.plot(counts["trim_length"], counts["sOTU_overlap_count"])
     plt.plot(counts["trim_length"], counts["sOTU_unique_pre"])
     plt.plot(counts["trim_length"], counts["sOTU_unique_post"])
+    plt.plot(counts["trim_length"], counts["diff_otu"])
     plt.legend(counts.columns[1:], loc='best')
     plt.title("sOTU counts")
     plt.xlabel("Trim Length")
