@@ -152,6 +152,8 @@ class TestPrePostDist(TestCase):
             self.exp_both["length"] = pd.to_numeric(self.exp_both["length"])
 
     def test_get_distance_distribution(self):
+        print(self.pre_100)
+        print(self.post_100)
         obs = get_distance_distribution(self.pre_100,self.post_100)
         print("obs")
         print(obs)

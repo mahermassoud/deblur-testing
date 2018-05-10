@@ -308,8 +308,9 @@ def analysis(input_fp, output_fp, trim_incr, num_trims):
                         trim_incr, num_trims, output_fp)
 
 
-def analysis_art(pre_artifacts, post_artifacts, clps_df, trim_incr=10,
-                 num_trims=5, output_fp=None, trim_lengths=None):
+def analysis_art(pre_artifacts, post_artifacts, clps_df=None, trim_incr=10,
+                 num_trims=5, output_fp=None, trim_lengths=None,
+                 pre_bioms=None, post_bioms=None):
     """Returns analysis data on pre/post artifacts
 
     Parameters
@@ -332,6 +333,12 @@ def analysis_art(pre_artifacts, post_artifacts, clps_df, trim_incr=10,
         Path to directory which output tsv's are saved, should not end with /
     trim_lengths: array_like of type INT
         list of lenghts we are trimming to
+    pre_bioms: array_like of biom.Table
+        pre-trimmed bioms in descending trim length order. Should be in
+        same order as post_bioms
+    post_artifacts: array_like of biom.Table
+        post-trimmed bioms in descending trim length order. Should be in
+        same order as pre_bioms
 
     Returns
     -------
@@ -343,22 +350,25 @@ def analysis_art(pre_artifacts, post_artifacts, clps_df, trim_incr=10,
     """
     start = time.clock()
     print("Enter analysis_art")
-    pre_bioms = [art.view(biom.Table) for art in pre_artifacts]
-    post_bioms = [art.view(biom.Table) for art in post_artifacts]
+    if pre_bioms is None and post_bioms is None:
+        pre_bioms = [art.view(biom.Table) for art in pre_artifacts]
+        post_bioms = [art.view(biom.Table) for art in post_artifacts]
 
     if(trim_lengths is None):
         otus = pre_bioms[0].ids(axis="observation")
         length = len(otus[0])
         trim_lengths, prc = calculate_trim_lengths(length, trim_incr,num_trims)
 
-    click.echo("Calculating pairwise diversity")
-    pairwise_mantel = methods.get_pairwise_diversity_data(pre_bioms, post_bioms,
-                                                          trim_lengths)
     click.echo("Calculating pre-post distances")
     pre_post, pre_overlaps, post_overlaps = \
         methods.get_pre_post_distance_data(pre_bioms, post_bioms, trim_lengths)
     # merge pre_post with collapse data so we can perform correlation
-    pre_post = pd.merge(pre_post, clps_df[["seq","num_collapses"]], on="seq")
+    if clps_df is not None:
+        pre_post = pd.merge(pre_post, clps_df[["seq","num_collapses"]], on="seq")
+
+    click.echo("Calculating pairwise diversity")
+    pairwise_mantel = methods.get_pairwise_diversity_data(pre_bioms, post_bioms,
+                                                          trim_lengths)
 
     click.echo("Calculating count info")
     counts, read_changes = methods.get_count_data(pre_bioms, pre_overlaps,
@@ -550,14 +560,25 @@ def biom_to_post(input_fp, output_fp):
 @click.option("-o", "--output-fp", type=click.Path(dir_okay=False),
               required=True, help="Path we will output qza to, extension optional")
 def biom_to_qiime(input_fp, output_fp):
-    if output_fp.endswith('/'):
-        output_fp = output_fp[:-1]
+    """Converts a .biom file to .qza file"""
 
     as_biom = biom.load_table(input_fp)
     as_artifact = Artifact.import_data("FeatureTable[Frequency]", as_biom)
     as_artifact.save(output_fp)
 
+@click.command()
+@click.option("-i", "--input-fp", type=click.Path(dir_okay=False, exists=True),
+              required=True, help="Path to .qza file we want to convert")
+@click.option("-o", "--output-fp", type=click.Path(dir_okay=False),
+              required=True, help="Path we will output .biom to")
+def qiime_to_biom(input_fp, output_fp):
+    """Converts a .qza file to .biom file"""
 
+    as_artifact = Artifact.load(input_fp)
+    as_biom = as_artifact.view(biom.Table)
+    as_json = as_biom.to_json(generated_by="deblur-testing")
+    with open(output_fp, "w") as f:
+        f.write(as_json)
 
 def calculate_trim_lengths(length, trim_incr, num_trims):
     """Returns list of lengths we will trim to. Each trim_incr percent less

@@ -18,7 +18,8 @@ setup(
         rplot=scripts:do_plots
         rall=scripts:pre_post
         sbiom=scripts:biom_to_post
-        biom2qiime=scripts:biom_to_qiime
+        biom2qza=scripts:biom_to_qiime
+        qza2biom=scripts:qiime_to_biom
     ''',
 )
 

@@ -1,7 +1,8 @@
 from unittest import TestCase, main
 import unittest
 from os import listdir
-import os
+import numpy as np
+from pandas.util.testing import assert_frame_equal
 
 from scripts import *
 from click.testing import CliRunner
@@ -84,6 +85,7 @@ class TestAnalysis(TestCase):
 
             self.assertEqual(0, result.exit_code, msg=result.exc_info)
             self.assertCountEqual(self.exp_out, out_files)
+
 
 @unittest.skip("Full integration test takes a long time")
 class TestAll(TestCase):
