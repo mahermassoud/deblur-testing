@@ -112,8 +112,15 @@ class TestPrePostDist(TestCase):
                                   ['A', 'B', 'C','D'], ['S1', 'S2'])
             self.post_100 = biom.Table(np.array([[1,1],[0,1],[1,1],[1,2]]),
                                   ['A', 'B', 'C','D'], ['S1', 'S2'])
+            self.post1_100_oo = biom.Table(np.array([[1,1],[2,1],[1,1],[1,0],[99,99]]),
+                                       ['A', 'D', 'C','B',"E"], ['S2', 'S1'])
             self.pre_50 = self.pre_100
             self.post_50 = self.post_100
+
+            self.exp_pre_100_ov = biom.Table(np.array([[0,0],[1,1],[1,1],[1,1]]),
+                                       ['A', 'D', 'C','B'], ['S2', 'S1'])
+            self.exp_post1_100_oo_ov = biom.Table(np.array([[1,1],[2,1],[1,1],[1,0]]),
+                                           ['A', 'D', 'C','B'], ['S2', 'S1'])
 
             self.exp_100 = pd.DataFrame(columns=["seq","dist_type","dist"],
                                     data= np.array([
@@ -172,6 +179,15 @@ class TestPrePostDist(TestCase):
         with self.assertRaises(ValueError):
               get_pre_post_distance_data([self.pre_100, self.pre_50],
                                          [self.post_100, self.post_50], [100, 50, 1])
+
+    def test_get_overlap_tables_oo(self):
+        obs_pre_ov, obs_post_ov = get_overlap_tables(self.pre_100,
+                                                     self.post1_100_oo)
+
+        self.assertEqual(self.exp_pre_100_ov, obs_pre_ov,
+                         msg=self.exp_pre_100_ov.descriptive_equality(obs_pre_ov))
+        self.assertEqual(self.exp_post1_100_oo_ov, obs_post_ov,
+                         msg=self.exp_post1_100_oo_ov.descriptive_equality(obs_post_ov))
 
 class TestPostTrim(TestCase):
     def setUp(self):
@@ -273,9 +289,10 @@ class TestGetCountData(TestCase):
         self.exp_cdata = pd.DataFrame(columns = ["trim_length",
                                                 "sOTU_overlap_count",
                                                 "sOTU_unique_pre",
-                                                "sOTU_unique_post"],
-                                      data = np.array([[1,3,1,1],
-                                                       [2,0,4,4]]))
+                                                "sOTU_unique_post",
+                                                "diff_otu"],
+                                      data = np.array([[1,3,1,1,0],
+                                                       [2,0,4,4,0]]))
         self.exp_rps = pd.DataFrame(columns = ['trim_length','S1', 'S2', 'S3', 'S4'],
                                     data = np.array([[1,44,40,37,63],
                                                      [2,47,44,41,67]]))

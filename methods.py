@@ -166,8 +166,7 @@ def get_distance_distribution(pre_table_overlap, post_table_overlap):
                 b = post_pa.data(obs, axis='observation', dense=True)
             else:
                 a = pre_table_overlap.data(obs, axis='observation', dense=True)
-                b = post_table_overlap.data(obs, axis='observation',
-                                            dense=True)
+                b = post_table_overlap.data(obs, axis='observation', dense=True)
             results.append((obs, fname, f(a, b)))
 
     results = pd.DataFrame(results, columns = ["seq", "dist_type", "dist"])
@@ -224,6 +223,7 @@ def get_overlap_tables(pre, post):
     # put the tables into the same order on both axes
     try:
         pre_table_overlap = pre_table_overlap.sort_order(post_table_overlap.ids(axis='observation'), axis='observation')
+        pre_table_overlap = pre_table_overlap.sort_order(post_table_overlap.ids(axis='sample'), axis='sample')
     except Error:
         print("Failed to sort tables, possibly because number of samples changed between pre and post")
         return
@@ -360,9 +360,7 @@ def get_count_data(pre_bioms, pre_overlaps, post_bioms, post_overlaps,
     "sotu_overlap_count" : num overlapping sOTUs,
     "sotu_unique_pre" : number of sOTUs unique to pre,
     "sotu_unique_post" : number of sOTUs unique to post,
-    "num_samples_pre" : num samples in pre_trim,
-    "num_samples_post" : num samples in post_trim,
-    "change_num_samples" : change in number of samples,
+    "diff_otu" : num of otus pre-post
 
     pandas DataFrame with columns:
     "trim_length",
@@ -386,12 +384,9 @@ def get_count_data(pre_bioms, pre_overlaps, post_bioms, post_overlaps,
     count_data["sOTU_unique_post"] = \
         [num_sOTUs(post_bioms[i]) - num_sOTUs(post_overlaps[i])
          for i in range(len(pre_overlaps))]
-
-    # TODO get rid of this because its always 0?
-    #count_data["num_samples_pre"] = [num_samples(table) for table in pre_bioms]
-    #count_data["num_samples_post"] = [num_samples(table) for table in post_bioms]
-    #count_data["change_num_samples"] = count_data["num_samples_pre"] - \
-    #                                   count_data["num_samples_post"]
+    count_data["diff_otu"] = \
+        [num_sOTUs(pre_bioms[i]) - num_sOTUs(post_bioms[i])
+         for i in range(len(pre_bioms))]
 
     change_reads_per_sample = pd.DataFrame()
     change_reads_per_sample["trim_length"] = trim_lengths
