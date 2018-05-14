@@ -12,20 +12,20 @@
 #PBS -m bea
 #PBS -M mahermassoud@gmail.com
 
-#PBS -o /home/mamaher/dbt_job_out1
-#PBS -e /home/mamaher/dbt_job_err1
+#PBS -k oe
 
 cd $PBS_O_WORKDIR
 source activate q2env
 echo "---------------------------------------------------------------------"
 echo "-------------------Running test_methods.py---------------------------"
 echo "---------------------------------------------------------------------"
-python /panfs/panfs1.ucsd.edu/panscratch/mamaher/deblur-testing/test/test_methods.py
+touch /panfs/panfs1.ucsd.edu/panscratch/mamaher/a_foo
+#python /panfs/panfs1.ucsd.edu/panscratch/mamaher/deblur-testing/test/test_methods.py
 
 echo "---------------------------------------------------------------------"
 echo "-------------------Running test_script.py---------------------------"
 echo "---------------------------------------------------------------------"
-python /panfs/panfs1.ucsd.edu/panscratch/mamaher/deblur-testing/test/test_methods.py
+#python /panfs/panfs1.ucsd.edu/panscratch/mamaher/deblur-testing/test/test_methods.py
 
 # comment PBS -o /home/mamaher/dbt_job_out
 # comment PBS -e /home/mamaher/dbt_job_err
