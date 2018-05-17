@@ -136,10 +136,11 @@ def get_collapse_counts(pt_bioms):
     return pd.DataFrame({"seq" : otu_col, "length" : len_col,
                          "num_collapses": counts_col})
 
-def get_distance_distribution(pre_table_overlap, post_table_overlap):
+def get_distance_distribution(pre_table_overlap, post_table_overlap,
+                              by_sample=False):
     """Given biom tables of overlapping reads, returns jaccard and bray curtis
-    distances between matching reads.
-    Two params should have exact same reads
+    distances between matching reads OR samples.
+    Two params should have exact same reads and samples
 
     Parameters
     ----------
@@ -147,6 +148,8 @@ def get_distance_distribution(pre_table_overlap, post_table_overlap):
         pre trimmed reads
     post_table_overlap: biom.Table
         post trimmed reads
+    by_sample: bool
+        True if we want to take each sample as a vector and compre distances
 
     Returns
     -------
@@ -156,20 +159,27 @@ def get_distance_distribution(pre_table_overlap, post_table_overlap):
     distance_functions = [('jaccard', scipy.spatial.distance.jaccard),
                           ('braycurtis', scipy.spatial.distance.braycurtis)]
 
+    if(by_sample):
+        axis="sample"
+        columns = ["sample", "dist_type", "dist"]
+    else:
+        axis="observation"
+        columns = ["seq", "dist_type", "dist"]
+
     results = []
     pre_pa = pre_table_overlap.pa(inplace=False)
     post_pa = post_table_overlap.pa(inplace=False)
-    for obs in pre_table_overlap.ids(axis='observation'):
+    for obs in pre_table_overlap.ids(axis=axis):
         for fname, f in distance_functions:
             if(fname == "jaccard"):
-                a = pre_pa.data(obs, axis='observation', dense=True)
-                b = post_pa.data(obs, axis='observation', dense=True)
+                a = pre_pa.data(obs, axis=axis, dense=True)
+                b = post_pa.data(obs, axis=axis, dense=True)
             else:
-                a = pre_table_overlap.data(obs, axis='observation', dense=True)
-                b = post_table_overlap.data(obs, axis='observation', dense=True)
+                a = pre_table_overlap.data(obs, axis=axis, dense=True)
+                b = post_table_overlap.data(obs, axis=axis, dense=True)
             results.append((obs, fname, f(a, b)))
 
-    results = pd.DataFrame(results, columns = ["seq", "dist_type", "dist"])
+    results = pd.DataFrame(results, columns=columns)
     return results
 
 def get_pairwise_dist_mat(deblur_biom, dist_type):
@@ -197,7 +207,7 @@ def get_pairwise_dist_mat(deblur_biom, dist_type):
 
 def get_overlap_tables(pre, post):
     """Takes in biom tables and returns the part of them that overlap in
-    same order
+    same order. Tables must have same samples
 
     Parameters
     ----------
@@ -231,8 +241,8 @@ def get_overlap_tables(pre, post):
     return (pre_table_overlap, post_table_overlap)
 
 def get_pre_post_distance_data(pre_bioms, post_bioms, trim_lengths):
-    """For each otu, get distance between the otu in pre and post. Returns
-    all distances in a pandas dataframe. Does jaccard and bray curtis
+    """For each otu, get distance between the otu and samples in pre and post. Returns
+    all distances in two pandas dataframes. Does jaccard and bray curtis.
 
     Parameters
     ----------
@@ -244,10 +254,16 @@ def get_pre_post_distance_data(pre_bioms, post_bioms, trim_lengths):
         same order as pre_bioms
     trim_lengths: array_like
         Trim lengths in descending order, should correspond to other arguments
+    by_sample: bool
+        True if we want to take each sample as a vector and compre distances
+    do_both: bool
+        If true, returns dataframes for both by sample and by observation.
+        Here to avoid overlapping twice
 
     Returns
     -------
-    Pandas dataframe that holds results for each pre-post mantel test
+    Pandas dataframe that holds results for each pre-post distance by otu
+    Pandas dataframe that holds results for each pre-post distance by sample
     array_like of biom.Table of overlapping otu's found in pre
     array_like of biom.Table of overlapping otu's found in post
     """
@@ -260,6 +276,7 @@ def get_pre_post_distance_data(pre_bioms, post_bioms, trim_lengths):
     pre_overlaps = []
     post_overlaps = []
     all_dists = pd.DataFrame()
+    all_dists_sample = pd.DataFrame()
     print("len(pre_bioms): {}".format(len(pre_bioms)))
     print("len(post_bioms): {}".format(len(post_bioms)))
     for i in range(len(pre_bioms)):
@@ -274,16 +291,20 @@ def get_pre_post_distance_data(pre_bioms, post_bioms, trim_lengths):
         print("len(post_overlaps): {}".format(len(post_overlaps)))
 
         dists = get_distance_distribution(pre_overlap_biom,
-                                                  post_overlap_biom)
-        
+                                          post_overlap_biom)
+        dists_sample = get_distance_distribution(pre_overlap_biom,
+                                                 post_overlap_biom, by_sample=True)
+
         print("i: {}, dists: {}".format(str(i), str(dists)))
 
         dists["length"] = trim_lengths[i]
+        dists_sample["length"] = trim_lengths[i]
         all_dists = all_dists.append(dists)
+        all_dists_sample = all_dists_sample.append(dists_sample)
         print("all_dists:\n{}".format(str(all_dists)))
 
     print("final all_dists:\n{}".format(str(all_dists)))
-    return all_dists, pre_overlaps, post_overlaps
+    return all_dists, all_dists_sample, pre_overlaps, post_overlaps
 
 def get_pairwise_diversity_data(pre_bioms, post_bioms, trim_lengths):
     """For each pre-post pair, gets the pairwise distance matrix of each

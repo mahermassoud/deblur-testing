@@ -74,8 +74,8 @@ class TestPostTrims(TestCase):
 class TestAnalysis(TestCase):
     def setUp(self):
         self.db_path = dir_path + "/data/mock-3-done/"
-        self.exp_out = ["pairwise_mantel.csv", "pre_post.csv", "counts.csv",
-                        "read_changes.csv"]
+        self.exp_out = ["pairwise_mantel.csv", "pre_post.csv", "pre_post_sample.csv",
+                        "counts.csv", "read_changes.csv"]
 
     def test_analysis(self):
         runner = CliRunner()
@@ -85,6 +85,13 @@ class TestAnalysis(TestCase):
 
             self.assertEqual(0, result.exit_code, msg=result.exc_info)
             self.assertCountEqual(self.exp_out, out_files)
+
+# TODO incomplete
+class TestEMPSubset(TestCase):
+    def setUp(self):
+        self.table_90nt = biom.Table(np.array([[1,2,10,20],[3,4,25,35]]), ["A","B"],["q1.fecal","q1.skin", "q40.nose", "q40.hair"])
+        self.table_100nt = biom.Table(np.array([[1,2,5,9],[3,4,6,4]]), ["A","B"],["q1.fecal","q1.skin","q2.ear", "q23.foot"])
+        self.table_150nt = biom.Table(np.array([[1,2,5,7,42],[3,4,6,8,22]]), ["A","B"],["q1.fecal","q1.skin","q2.ear","q2.mouth", "q300.knee"])
 
 
 @unittest.skip("Full integration test takes a long time")
@@ -97,6 +104,7 @@ class TestAll(TestCase):
                         "deblurred_pre_135.qza", "deblur.log",
                         "deblurred_pt_150.qza", "deblurred_pt_135.qza",
                         "collapse.csv", "pairwise_mantel.csv", "pre_post.csv",
+                        "pre_post_sample.csv",
                         "counts.csv", "read_changes.csv", 'collapse.png',
                         'counts.png', 'pairwise_mantel.png', 'pre_post.png',
                         'read_changes.png']

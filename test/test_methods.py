@@ -112,6 +112,13 @@ class TestPrePostDist(TestCase):
                                   ['A', 'B', 'C','D'], ['S1', 'S2'])
             self.post_100 = biom.Table(np.array([[1,1],[0,1],[1,1],[1,2]]),
                                   ['A', 'B', 'C','D'], ['S1', 'S2'])
+            self.pre_100_sample = biom.Table(np.array([[0,0],[1,1],[1,1],[1,1]]).transpose(),
+                                             ['X','Y'],["S1","S2","S3","S4"])
+            self.pre_100_sample_extra = biom.Table(np.array([[0,0,6],[1,1,6],[1,1,6],[1,1,6]]).transpose(),
+                                             ['X','Y',"Z"],["S1","S2","S3","S4"])
+            self.post_100_sample = biom.Table(np.array([[1,1],[0,1],[1,1],[1,2]]).transpose(),
+                                             ['X','Y'],["S1","S2","S3","S4"])
+
             self.post1_100_oo = biom.Table(np.array([[1,1],[2,1],[1,1],[1,0],[99,99]]),
                                        ['A', 'D', 'C','B',"E"], ['S2', 'S1'])
             self.pre_50 = self.pre_100
@@ -133,6 +140,17 @@ class TestPrePostDist(TestCase):
                                         ["D","jaccard",0.0],
                                         ["D","braycurtis",0.2],
                                     ]))
+            self.exp_100_sample = pd.DataFrame(columns=["sample","dist_type","dist"],
+                                        data= np.array([
+                                            ["S1","jaccard", 1.0],
+                                            ["S1","braycurtis",1.0],
+                                            ["S2","jaccard",0.5],
+                                            ["S2","braycurtis",1/3],
+                                            ["S3","jaccard",0.0],
+                                            ["S3","braycurtis",0.0],
+                                            ["S4","jaccard",0.0],
+                                            ["S4","braycurtis",0.2],
+                                        ]))
             self.exp_both = pd.DataFrame(columns=["seq","dist_type","dist",
                                                   "length"],
                                data= np.array([
@@ -154,26 +172,42 @@ class TestPrePostDist(TestCase):
                                    ["D", "jaccard",    0.0, 50],
                                    ["D", "braycurtis", 0.2, 50]
                                ]))
+            self.exp_both_sample = pd.DataFrame(columns=["sample","dist_type","dist",
+                                                  "length"],
+                                         data= np.array([
+                                             ["S1", "jaccard",    0.5,  100],
+                                             ["S1", "braycurtis", 1/3,  100],
+                                             ["S2", "jaccard",    0.25, 100],
+                                             ["S2", "braycurtis", 0.25, 100],
+                                             ["S1", "jaccard",    0.5,  50],
+                                             ["S1", "braycurtis", 1/3,  50],
+                                             ["S2", "jaccard",    0.25, 50],
+                                             ["S2", "braycurtis", 0.25, 50],
+                                         ]))
+
             self.exp_100["dist"] = pd.to_numeric(self.exp_100["dist"])
+            self.exp_100_sample["dist"] = pd.to_numeric(self.exp_100_sample["dist"])
             self.exp_both["dist"] = pd.to_numeric(self.exp_both["dist"])
             self.exp_both["length"] = pd.to_numeric(self.exp_both["length"])
+            self.exp_both_sample["dist"] = pd.to_numeric(self.exp_both_sample["dist"])
+            self.exp_both_sample["length"] = pd.to_numeric(self.exp_both_sample["length"])
 
     def test_get_distance_distribution(self):
-        print(self.pre_100)
-        print(self.post_100)
         obs = get_distance_distribution(self.pre_100,self.post_100)
-        print("obs")
-        print(obs)
-        print("exp")
-        print(self.exp_100)
         assert_frame_equal(self.exp_100, obs)
 
+    def test_get_distance_distribution_samplewise(self):
+        obs = get_distance_distribution(self.pre_100_sample, self.post_100_sample, by_sample=True)
+        assert_frame_equal(self.exp_100_sample, obs)
+
     def test_get_pre_post_distances(self):
-        obs, po, pto = get_pre_post_distance_data([self.pre_100, self.pre_50],
+        obs, obs_sample, po, pto = get_pre_post_distance_data([self.pre_100, self.pre_50],
                                          [self.post_100, self.post_50],
                                          [100, 50])
         obs.index = list(range(obs.shape[0]))
+        obs_sample.index = list(range(obs_sample.shape[0]))
         assert_frame_equal(self.exp_both, obs)
+        assert_frame_equal(self.exp_both_sample, obs_sample)
 
     def test_get_pre_post_distances_fail(self):
         with self.assertRaises(ValueError):
