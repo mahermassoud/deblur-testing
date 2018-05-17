@@ -8,3 +8,13 @@ test/data/mock-3-demo
 __pycache__/
 deblur_testing.egg-info/
 deblur.log
+
+.idea/
+build/
+dist/
+experimenting.py
+experimenting2.py
+analysis_testing.ipynb
+q213*
+scratch.ipynb
+notebooks/
