@@ -1,3 +1,10 @@
+# 4/17/18 TODO
+1. Subsample EMP and save 10 - 100 samples
+2. Set up do you can plot runtime vs # samples (do in pbs script?)
+    - keep track of #features
+3. Run and plot runtime v #samples
+4. Maybe do same for features?
+
 # High priority
 1. Make dotfile for bash config, use miniconda
 2. Put it on cluster

@@ -522,7 +522,7 @@ def pre_post(input_fp, metadata, metadata_bc_col, rev_bc, rev_map_bc,
     pw_mantel, pre_post, pre_post_sample, counts, read_changes = \
         analysis_art(pre_arts, pt_arts, clps, trim_incr, num_trims, output_fp)
 
-    plot_pd(pw_mantel, pre_post, counts, read_changes, output_fp)
+    plot_pd(pw_mantel, pre_post, pre_post_sample, counts, read_changes, output_fp)
     click.echo("{}s for entire pre_post()".format(str(time.clock()-start)))
 
 @click.command()

@@ -94,7 +94,7 @@ class TestEMPSubset(TestCase):
         self.table_150nt = biom.Table(np.array([[1,2,5,7,42],[3,4,6,8,22]]), ["A","B"],["q1.fecal","q1.skin","q2.ear","q2.mouth", "q300.knee"])
 
 
-@unittest.skip("Full integration test takes a long time")
+#@unittest.skip("Full integration test takes a long time")
 class TestAll(TestCase):
     """Integration test"""
     def setUp(self):
