@@ -4,3 +4,7 @@ test/analysis_testing_wd
 test/data/mock-3
 test/deblur.log
 test/data/mock-3-demo
+
+__pycache__/
+deblur_testing.egg-info/
+deblur.log
