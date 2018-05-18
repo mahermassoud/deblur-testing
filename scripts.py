@@ -600,7 +600,6 @@ def qiime_to_biom(input_fp, output_fp):
 @click.option("-o", "--output-fp", type=click.Path(file_okay=False),
               help="Path to output subsetted.biom files to")
 @click.option("--identical", is_flag=True, help="Have this if qiita_ids have identical samples accross tables")
-# TODO incomplete
 def subset_emp_bioms(max_length_biom_fp, smaller_biom_fp, output_fp, identical,
                      max_biom=None, smaller_bioms=None, file_only=True):
     """
@@ -663,6 +662,7 @@ def subset_emp_bioms(max_length_biom_fp, smaller_biom_fp, output_fp, identical,
 @click.option("-mi","--main-input-fp", required=True, type=click.Path(dir_okay=False, exists=True),
               help="Path to input biom table")
 @click.option("-oi","--ot-input-fp", type=click.Path(dir_okay=False, exists=True),
+              multiple=True,
               help="Path to input biom table")
 @click.option("-s", "--start", required=True, type=click.INT,
               help="Start # of samples to subsample")
@@ -677,6 +677,8 @@ def subsample_biom(main_input_fp, ot_input_fp, start, end, count, output_fp):
     """Subsamples a biom table by sample many times and subsamples its
     accompanying tables as well with the same IDs
 
+    Does NOT sort
+
     Returns
     -------
     output_bioms: array_like
@@ -687,39 +689,41 @@ def subsample_biom(main_input_fp, ot_input_fp, start, end, count, output_fp):
     if output_fp.endswith('/'):
         output_fp = output_fp[:-1]
 
-    all_fp = [main_input_fp] + ot_input_fp
+    all_fp = list(ot_input_fp)
+    all_fp.insert(0, main_input_fp)
     basenames = [os.path.basename(fp).split(".")[0] for fp in all_fp]
 
     main_biom = biom.load_table(main_input_fp)
+    # There are 2 samples in 150nt that are not in 100,90nt, filtering them here
+    #not_shared_ids = ["1064.G.CV298", "2229.W2.N13.EH1.Thomas.CMB.Seaweed.lane5.NoIndex.L005"]
+    #main_biom.filter(not_shared_ids, invert=True, inplace=True)
+
     ot_bioms = []
     for fp in ot_input_fp:
         ot_bioms.append(biom.load_table(fp))
-
-    main_length = get_length_biom(main_biom)
-    lengths = main_length + [get_length_biom(tbl) for tbl in ot_bioms]
 
     output_bioms = []
     for s_count in np.linspace(start, end, count):
         list_entry = []
         s_count = int(s_count)
 
-        ss_main_biom = main_biom.subsample(s_count, by_id=True)
+        ss_main_biom = main_biom.subsample(s_count, by_id=True).remove_empty()
         ids = ss_main_biom.ids()
-        while(not contains_ids(ot_bioms, ids, "sample")):
-            ss_main_biom = main_biom.subsample(s_count, by_id=True)
-            ids = ss_main_biom.ids()
+        obs = ss_main_biom.ids(axis="observation")
 
         list_entry.append(ss_main_biom)
         # Subset our other bioms
         for ot_biom in ot_bioms:
-            ot_ss = ot_biom.filter(ids)
+            ot_ss = ot_biom.filter(ids, inplace=False)
+            ot_ss.filter(obs, axis="observation")
             list_entry.append(ot_ss)
 
-        for length, tbl, fn in zip(lengths, list_entry, basenames):
-            save_path = output_fp + "/" + fn + "_ss_{}.biom".format(str(s_count))
+        for tbl, fn in zip(list_entry, basenames):
+            save_path = "{}/{}_ss_{}.biom".format(output_fp, fn, str(s_count))
+            print(save_path)
             with open(save_path, "w") as file:
                 tbl.to_json(generated_by="deblur_testing_subsample_biom",
-                                direct_io=file)
+                            direct_io=file)
 
         output_bioms.append(list_entry)
 

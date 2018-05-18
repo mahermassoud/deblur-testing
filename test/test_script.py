@@ -1,5 +1,6 @@
 from unittest import TestCase, main
 import unittest
+import traceback
 from os import listdir
 import numpy as np
 from pandas.util.testing import assert_frame_equal
@@ -86,18 +87,40 @@ class TestAnalysis(TestCase):
             self.assertEqual(0, result.exit_code, msg=result.exc_info)
             self.assertCountEqual(self.exp_out, out_files)
 
-# TODO incomplete
 class TestSubSampleBiom(TestCase):
     def setUp(self):
-        self.biom_fp = "/Users/massoudmaher/Documents/Code/deblur-testing/test/data/mock-3/deblurred_150nt.biom"
-        self.ss_biom_fp = "/Users/massoudmaher/Documents/Code/deblur-testing/test/data/mock-3/ss_deblurred_150nt.biom"
-        self.ss_biom_fp = "/Users/massoudmaher/Documents/Code/deblur-testing/test/data/mock-3/ss_deblurred_150nt.biom"
+        self.tbl_100_1 = biom.Table(np.array([[1,1],[1,1],[1,1],[0,0]]).transpose(),
+                                         ['X','Y'],["S1","S2","S3","S4"])
+        self.tbl_100_2 = biom.Table(np.array([[2,2,2],[2,2,2],[2,2,2],[2,2,2]]).transpose(),
+                                               ['X','Y',"Z"],["S1","S2","S3","S4"])
+        self.tbl_100_3 = biom.Table(np.array([[3,3,3],[3,3,3],[3,3,3],[3,3,3]]).transpose(),
+                                    ['X','Y',"Z"],["S1","S2","S3","S4"])
 
     def test_subsample_biom(self):
         runner = CliRunner()
         with runner.isolated_filesystem():
-            result = runner.invoke(analysis, ["-i", self.db_path, "-o", "."])
+            with open("tbl_100_1.biom", "w") as f1:
+                self.tbl_100_1.to_json(generated_by="test_script", direct_io=f1)
+            with open("tbl_100_2.biom", "w") as f2:
+                self.tbl_100_2.to_json(generated_by="test_script", direct_io=f2)
+            with open("tbl_100_3.biom", "w") as f3:
+                self.tbl_100_3.to_json(generated_by="test_script", direct_io=f3)
 
+            result = runner.invoke(subsample_biom, ["-mi", "tbl_100_1.biom",
+                                                    "-oi", "tbl_100_2.biom",
+                                                    "-oi", "tbl_100_3.biom",
+                                                    "-s", 1,
+                                                    "-e", 3,
+                                                    "-c", 3,
+                                                    "-o", "."])
+            out_files = listdir(os.getcwd())
+            print(out_files)
+            print("output:")
+            print(result.output)
+            self.assertEqual(0, result.exit_code,
+                             msg="output:\n{}\nexc.info:\n{}\n traceback:{}" \
+                             .format(result.output, result.exc_info,
+                                     traceback.extract_tb(result.exc_info[2])))
 
 
 #@unittest.skip("Full integration test takes a long time")

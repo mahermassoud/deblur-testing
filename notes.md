@@ -1,3 +1,9 @@
+# Sample intersection!!
+In EMP release 1. Everything in 150nt is in 100nt and 90nt except for these 2 samples
+                                                 sample        count
+34                                         1064.G.CV298        5.000
+2229.W2.N13.EH1.Thomas.CMB.Seaweed.lane5.NoIndex.L005
+
 # 4/17/18 TODO
 1. Subsample EMP and save 10 - 100 samples
 2. Set up do you can plot runtime vs # samples (do in pbs script?)
