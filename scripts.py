@@ -9,6 +9,7 @@ import time
 import os
 import re
 import pandas as pd
+import numpy as np
 
 @click.command()
 @click.option('-i','--input-fp', required=True,
@@ -657,6 +658,82 @@ def subset_emp_bioms(max_length_biom_fp, smaller_biom_fp, output_fp, identical,
                 with open(output_fp + "/" + qs_small_name) as file:
                     qs_small.to_json(generated_by="deblur_testing_subset_emp_bioms",
                                    direct_io=file)
+
+@click.command()
+@click.option("-mi","--main-input-fp", required=True, type=click.Path(dir_okay=False, exists=True),
+              help="Path to input biom table")
+@click.option("-oi","--ot-input-fp", type=click.Path(dir_okay=False, exists=True),
+              help="Path to input biom table")
+@click.option("-s", "--start", required=True, type=click.INT,
+              help="Start # of samples to subsample")
+@click.option("-e", "--end", required=True, type=click.INT,
+              help="End # of samples to subsample")
+@click.option("-c", "--count", required=True, type=click.INT,
+              help="# of different subsamples we do in between")
+@click.option("-o","--output-fp", type=click.Path(file_okay=False),
+              help="Path to output subsampled biom tables to. Naming format:" \
+                   "<original name>_ss_<# subsample>.biom")
+def subsample_biom(main_input_fp, ot_input_fp, start, end, count, output_fp):
+    """Subsamples a biom table by sample many times and subsamples its
+    accompanying tables as well with the same IDs
+
+    Returns
+    -------
+    output_bioms: array_like
+        Array of lists where first element in each element
+        is main biom, next n elements are corresponding ot_bioms
+        There is an entry for each subsample amount
+    """
+    if output_fp.endswith('/'):
+        output_fp = output_fp[:-1]
+
+    all_fp = [main_input_fp] + ot_input_fp
+    basenames = [os.path.basename(fp).split(".")[0] for fp in all_fp]
+
+    main_biom = biom.load_table(main_input_fp)
+    ot_bioms = []
+    for fp in ot_input_fp:
+        ot_bioms.append(biom.load_table(fp))
+
+    main_length = get_length_biom(main_biom)
+    lengths = main_length + [get_length_biom(tbl) for tbl in ot_bioms]
+
+    output_bioms = []
+    for s_count in np.linspace(start, end, count):
+        list_entry = []
+        s_count = int(s_count)
+
+        ss_main_biom = main_biom.subsample(s_count, by_id=True)
+        ids = ss_main_biom.ids()
+        while(not contains_ids(ot_bioms, ids, "sample")):
+            ss_main_biom = main_biom.subsample(s_count, by_id=True)
+            ids = ss_main_biom.ids()
+
+        list_entry.append(ss_main_biom)
+        # Subset our other bioms
+        for ot_biom in ot_bioms:
+            ot_ss = ot_biom.filter(ids)
+            list_entry.append(ot_ss)
+
+        for length, tbl, fn in zip(lengths, list_entry, basenames):
+            save_path = output_fp + "/" + fn + "_ss_{}.biom".format(str(s_count))
+            with open(save_path, "w") as file:
+                tbl.to_json(generated_by="deblur_testing_subsample_biom",
+                                direct_io=file)
+
+        output_bioms.append(list_entry)
+
+    return output_bioms
+
+def contains_ids(bioms, ids, axis):
+    """Given a list of bioms, determines whether they all have a list of
+    ids"""
+    for biom in bioms:
+        for id in ids:
+            if (not biom.exists(id, axis)):
+                return False
+    return True
+
 
 def calculate_trim_lengths(length, trim_incr, num_trims):
     """Returns list of lengths we will trim to. Each trim_incr percent less

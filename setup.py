@@ -20,6 +20,7 @@ setup(
         sbiom=scripts:biom_to_post
         biom2qza=scripts:biom_to_qiime
         qza2biom=scripts:qiime_to_biom
+        ssbiom=scripts:subsample_biom
     ''',
 )
 

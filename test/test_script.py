@@ -87,11 +87,17 @@ class TestAnalysis(TestCase):
             self.assertCountEqual(self.exp_out, out_files)
 
 # TODO incomplete
-class TestEMPSubset(TestCase):
+class TestSubSampleBiom(TestCase):
     def setUp(self):
-        self.table_90nt = biom.Table(np.array([[1,2,10,20],[3,4,25,35]]), ["A","B"],["q1.fecal","q1.skin", "q40.nose", "q40.hair"])
-        self.table_100nt = biom.Table(np.array([[1,2,5,9],[3,4,6,4]]), ["A","B"],["q1.fecal","q1.skin","q2.ear", "q23.foot"])
-        self.table_150nt = biom.Table(np.array([[1,2,5,7,42],[3,4,6,8,22]]), ["A","B"],["q1.fecal","q1.skin","q2.ear","q2.mouth", "q300.knee"])
+        self.biom_fp = "/Users/massoudmaher/Documents/Code/deblur-testing/test/data/mock-3/deblurred_150nt.biom"
+        self.ss_biom_fp = "/Users/massoudmaher/Documents/Code/deblur-testing/test/data/mock-3/ss_deblurred_150nt.biom"
+        self.ss_biom_fp = "/Users/massoudmaher/Documents/Code/deblur-testing/test/data/mock-3/ss_deblurred_150nt.biom"
+
+    def test_subsample_biom(self):
+        runner = CliRunner()
+        with runner.isolated_filesystem():
+            result = runner.invoke(analysis, ["-i", self.db_path, "-o", "."])
+
 
 
 #@unittest.skip("Full integration test takes a long time")
