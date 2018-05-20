@@ -715,13 +715,15 @@ def subsample_biom(main_input_fp, ot_input_fp, start, end, count, output_fp):
         list_entry = []
         s_count = int(s_count)
 
-        ss_main_biom = main_biom.subsample(s_count, by_id=True).remove_empty()
+        ss_main_biom = main_biom.subsample(s_count, by_id=True)
         ids = ss_main_biom.ids()
         
         # Determine shared observations
         obs = set(ss_main_biom.ids(axis="observation"))
         for ot_biom in ot_bioms:
           obs = obs & set(ot_biom.ids(axis="observation"))
+
+        print()
 
         list_entry.append(ss_main_biom)
         # Subset our other bioms
