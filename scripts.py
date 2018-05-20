@@ -721,21 +721,27 @@ def subsample_biom(main_input_fp, ot_input_fp, start, end, count, output_fp):
         # Determine shared observations
         obs = set(ss_main_biom.ids(axis="observation"))
         for ot_biom in ot_bioms:
-          obs = obs & set(ot_biom.ids(axis="observation"))
+            print(obs)
+            print(len(obs))
+            obs = obs & set(ot_biom.ids(axis="observation"))
 
-        print()
+        print("--------------obs final-----------------------")
+        print(obs)
+        print(len(obs))
 
         list_entry.append(ss_main_biom)
         # Subset our other bioms
         for ot_biom in ot_bioms:
             ot_ss = ot_biom.filter(ids, inplace=False)
+            print("ot_ss sample filtered: " + str(ot_ss))
             ot_ss.filter(obs, axis="observation")
+            print("ot_ss obs filtered: " + str(ot_ss))
             list_entry.append(ot_ss)
 
         for tbl, fn in zip(list_entry, basenames):
             save_path = "{}/{}_ss_{}.biom".format(output_fp, fn, str(s_count))
             print(save_path)
-            print(tbl)
+            print(str(tbl))
             with open(save_path, "w") as file:
                 tbl.to_json(generated_by="deblur_testing_subsample_biom",
                             direct_io=file)
