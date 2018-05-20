@@ -721,12 +721,10 @@ def subsample_biom(main_input_fp, ot_input_fp, start, end, count, output_fp):
         # Determine shared observations
         obs = set(ss_main_biom.ids(axis="observation"))
         for ot_biom in ot_bioms:
-            print(obs)
             print(len(obs))
             obs = obs & set(ot_biom.ids(axis="observation"))
 
         print("--------------obs final-----------------------")
-        print(obs)
         print(len(obs))
 
         list_entry.append(ss_main_biom)
