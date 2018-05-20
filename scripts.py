@@ -694,22 +694,23 @@ def subsample_biom(main_input_fp, ot_input_fp, start, end, count, output_fp):
     basenames = [os.path.basename(fp).split(".")[0] for fp in all_fp]
 
 
-    start = time.clock()
+    c_start = time.clock()
     main_biom = biom.load_table(main_input_fp)
     # There are 2 samples in 150nt that are not in 100,90nt, filtering them here
-    #not_shared_ids = ["1064.G.CV298", "2229.W2.N13.EH1.Thomas.CMB.Seaweed.lane5.NoIndex.L005"]
-    #main_biom.filter(not_shared_ids, invert=True, inplace=True)
-    click.echo("{}s for load main biom".format(str(time.clock() - start)))
+    not_shared_ids = ["1064.G.CV298", "2229.W2.N13.EH1.Thomas.CMB.Seaweed.lane5.NoIndex.L005"]
+    main_biom.filter(not_shared_ids, invert=True, inplace=True)
+    click.echo("{}s for load main biom".format(str(time.clock() - c_start)))
 
-    start = time.clock()
+    c_start = time.clock()
     ot_bioms = []
     for fp in ot_input_fp:
         ot_bioms.append(biom.load_table(fp))
-    click.echo("{}s for load other bioms".format(str(time.clock() - start)))
+    click.echo("{}s for load other bioms".format(str(time.clock() - c_start)))
+    click.echo("ot_bioms: {}".format(str(ot_bioms)))
 
     output_bioms = []
     for s_count in np.linspace(start, end, count):
-        start = time.clock()
+        c_start = time.clock()
         list_entry = []
         s_count = int(s_count)
 
@@ -732,7 +733,7 @@ def subsample_biom(main_input_fp, ot_input_fp, start, end, count, output_fp):
                             direct_io=file)
 
         output_bioms.append(list_entry)
-        click.echo("{}s for s_count {}".format(str(time.clock() - start), str(s_count)))
+        click.echo("{}s for s_count {}".format(str(time.clock() - c_start), str(s_count)))
 
     return output_bioms
 
