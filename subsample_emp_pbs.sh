@@ -14,7 +14,10 @@
 
 #PBS -k oe
 
-time source activate q2env
+source activate q2env
+cd home/mamaher/deblur-testing
+pip install -e .
+
 echo $(date +"%T")
-cd /panfs/panfs1.ucsd.edu/panscratch/mamaher/emp_ss
-time ssbiom -mi /projects/emp/03-otus/04-deblur/emp_deblur_150bp.release1.biom -oi /projects/emp/03-otus/04-deblur/emp_deblur_100bp.release1.biom -oi /projects/emp/03-otus/04-deblur/emp_deblur_90bp.release1.biom -s 10 -e 100 -c 10 -o .
+cd /panfs/panfs1.ucsd.edu/panscratch/mamaher/emp_ss_2
+time ssbiom -mi /projects/emp/03-otus/04-deblur/emp_deblur_150bp.release1.biom -oi /projects/emp/03-otus/04-deblur/emp_deblur_100bp.release1.biom -oi /projects/emp/03-otus/04-deblur/emp_deblur_90bp.release1.biom -s 10 -e 100 -c 5 -o .
