@@ -89,7 +89,7 @@ class TestAnalysis(TestCase):
 
 class TestSubSampleBiom(TestCase):
     def setUp(self):
-        self.tbl_100_1 = biom.Table(np.array([[1,1],[1,1],[1,1],[0,0]]).transpose(),
+        self.tbl_100_1 = biom.Table(np.array([[1,1],[0,0],[0,0],[0,0]]).transpose(),
                                          ['X','Y'],["S1","S2","S3","S4"])
         self.tbl_100_2 = biom.Table(np.array([[2,2,2],[2,2,2],[2,2,2],[2,2,2]]).transpose(),
                                                ['X','Y',"Z"],["S1","S2","S3","S4"])
