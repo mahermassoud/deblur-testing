@@ -717,7 +717,6 @@ def subsample_biom(main_input_fp, ot_input_fp, start, end, count, output_fp):
 
         ss_main_biom = main_biom.subsample(s_count, by_id=True)
         ids = ss_main_biom.ids()
-        
 
         list_entry.append(ss_main_biom)
         # Subset our other bioms
