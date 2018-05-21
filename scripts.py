@@ -707,7 +707,6 @@ def subsample_biom(main_input_fp, ot_input_fp, start, end, count, output_fp):
     for fp in ot_input_fp:
         ot_bioms.append(biom.load_table(fp))
     click.echo("{}s for load other bioms".format(str(time.clock() - c_start)))
-    click.echo("ot_bioms: {}".format(str(ot_bioms)))
 
     output_bioms = []
     for s_count in np.linspace(start, end, count):
