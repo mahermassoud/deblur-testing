@@ -16,8 +16,8 @@
 
 time source activate q2env
 echo $(date +"%T")
-echo "sample observation filename" > /home/mamaher/emp_deblur_ss1/shapes
-for file in /home/mamaher/emp_deblur_ss1/*.biom; do
-  echo $file >> /home/mamaher/emp_deblur_ss1/shapes
-  biom summarize-table -i $file | awk -F ":" 'FNR == 1 {print $2}; FNR == 2 {print $2};' >> /home/mamaher/emp_deblur_ss1/shapes
+echo "sample observation filename" > /panfs/panfs1.ucsd.edu/panscratch/mamaher/emp_ss_2/shapes
+for file in /panfs/panfs1.ucsd.edu/panscratch/mamaher/emp_ss_2/*.biom; do
+  echo $file >> /home/mamaher/emp_deblur_ss2/shapes
+  biom summarize-table -i $file | awk -F ":" 'FNR == 1 {print $2}; FNR == 2 {print $2};' >> /panfs/panfs1.ucsd.edu/panscratch/mamaher/emp_ss_2/shapes
 done
