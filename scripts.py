@@ -534,7 +534,11 @@ def pre_post(input_fp, metadata, metadata_bc_col, rev_bc, rev_map_bc,
               type=click.Path(file_okay=False),
               help="Directory where we will output everything, see other"
                    " functions to see output formats. demux as demux.qza")
-def biom_to_post(input_fp, output_fp):
+@click.option("-to", "--time-out",
+              help="Path to file we are appending time info to")
+@click.option("-toa", "--time-out-append",
+              help="Identification string to append to time out file")
+def biom_to_post(input_fp, output_fp, time_out, time_out_append):
     """Runs the analysis pipeline starting from pre trimmed .biom files
     """
     start = time.clock()
@@ -556,15 +560,20 @@ def biom_to_post(input_fp, output_fp):
     # Sort in descending order by length
     pre_arts = [x for _,x in sorted(zip(lengths, pre_arts), reverse=True)]
 
-    #pt_arts, clps = post_trims_art(output_fp, pre_arts[0],
-    #                               trim_lengths=lengths)
+    pt_arts, clps = post_trims_art(output_fp, pre_arts[0],
+                                   trim_lengths=lengths)
 
     pw_mantel, pre_post, pre_post_sample, counts, read_changes = \
-        analysis_art(pre_arts, None, None, trim_lengths=lengths,
+        analysis_art(pre_arts, pt_arts, clps, trim_lengths=lengths,
                      output_fp=output_fp)
 
-    #plot_pd(pw_mantel, pre_post, counts, read_changes, output_fp)
-    #click.echo("{}s for entire biom_post()".format(str(time.clock()-start)))
+    plot_pd(pw_mantel, pre_post, counts, read_changes, output_fp)
+
+    elapsed = time.clock()-start
+    click.echo("{}s for entire biom_post()".format(str(elapsed)))
+    if time_out is not None and time_out_append is not None:
+        with open(time_out, "a") as file:
+            file.write("{}\t{}\n".format(time_out_append, str(elapsed)))
 
 @click.command()
 @click.option("-i", "--input-fp", type=click.Path(dir_okay=False, exists=True),
