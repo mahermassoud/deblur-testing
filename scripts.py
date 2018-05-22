@@ -698,8 +698,8 @@ def subsample_biom(main_input_fp, ot_input_fp, start, end, count, output_fp):
     c_start = time.clock()
     main_biom = biom.load_table(main_input_fp)
     # There are 2 samples in 150nt that are not in 100,90nt, filtering them here
-    #not_shared_ids = ["1064.G.CV298", "2229.W2.N13.EH1.Thomas.CMB.Seaweed.lane5.NoIndex.L005"]
-    #main_biom.filter(not_shared_ids, invert=True, inplace=True)
+    not_shared_ids = ["1064.G.CV298", "2229.W2.N13.EH1.Thomas.CMB.Seaweed.lane5.NoIndex.L005"]
+    main_biom.filter(not_shared_ids, invert=True, inplace=True)
     click.echo("{}s for load main biom".format(str(time.clock() - c_start)))
 
     c_start = time.clock()
