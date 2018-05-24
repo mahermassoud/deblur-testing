@@ -179,9 +179,9 @@ def get_distance_distribution(pre_table_overlap, post_table_overlap,
                 a = pre_table_overlap.data(obs, axis=axis, dense=True)
                 b = post_table_overlap.data(obs, axis=axis, dense=True)
 
-            d_val = f(a,b)
+            d_val = f(a, b)
             if np.isnan(d_val):
-                raise ArithmeticError("pre-post distance is NaN for obs: {}".format(obs))
+                d_val = 0 # because f(0,0) returns NaN
             results.append((obs, fname, d_val))
 
     results = pd.DataFrame(results, columns=columns)

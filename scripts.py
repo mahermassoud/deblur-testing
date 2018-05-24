@@ -273,6 +273,8 @@ def post_trims_art(output_fp, input_artifact=None, trim_incr=10,
               help="Trim lengths")
 def analysis(input_fp, output_fp, trim_incr, num_trims, trim_lengths):
 
+    click.echo(trim_lengths)
+
     start = time.clock()
     if input_fp.endswith('/'):
         input_fp = input_fp[:-1]
