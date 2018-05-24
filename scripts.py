@@ -544,7 +544,9 @@ def pre_post(input_fp, metadata, metadata_bc_col, rev_bc, rev_map_bc,
               help="Path to file we are appending time info to")
 @click.option("-toa", "--time-out-append",
               help="Identification string to append to time out file")
-def biom_to_post(input_fp, output_fp, time_out, time_out_append):
+@click.option("-tl", "--trim-lengths", type=click.INT, multiple=True, required=False,
+              help="Trim lengths")
+def biom_to_post(input_fp, output_fp, time_out, time_out_append, trim_lengths):
     """Runs the analysis pipeline starting from pre trimmed .biom files
     """
     start = time.clock()
@@ -557,7 +559,8 @@ def biom_to_post(input_fp, output_fp, time_out, time_out_append):
     lengths = []
     for fp in input_fp:
         as_biom = biom.load_table(fp)
-        lengths.append(get_length_biom(as_biom))
+        if(len(trim_lengths) == 0):
+            lengths.append(get_length_biom(as_biom))
         pre_bioms.append(as_biom)
         as_artifact = Artifact.import_data("FeatureTable[Frequency]", as_biom)
         as_artifact.save(output_fp + "/" + os.path.basename(fp))
