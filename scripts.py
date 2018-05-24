@@ -553,27 +553,28 @@ def biom_to_post(input_fp, output_fp, time_out, time_out_append, trim_lengths):
 
     if output_fp.endswith('/'):
         output_fp = output_fp[:-1]
+    if(len(trim_lengths) == 0):
+        trim_lengths = []
 
     pre_arts = []
     pre_bioms = []
-    lengths = []
     for fp in input_fp:
         as_biom = biom.load_table(fp)
         if(len(trim_lengths) == 0):
-            lengths.append(get_length_biom(as_biom))
+            trim_lengths.append(get_length_biom(as_biom))
         pre_bioms.append(as_biom)
         as_artifact = Artifact.import_data("FeatureTable[Frequency]", as_biom)
         as_artifact.save(output_fp + "/" + os.path.basename(fp))
         pre_arts.append(as_artifact)
 
     # Sort in descending order by length
-    pre_arts = [x for _,x in sorted(zip(lengths, pre_arts), reverse=True)]
+    pre_arts = [x for _,x in sorted(zip(trim_lengths, pre_arts), reverse=True)]
 
     pt_arts, clps = post_trims_art(output_fp, pre_arts[0],
-                                   trim_lengths=lengths)
+                                   trim_lengths=trim_lengths)
 
     pw_mantel, pre_post, pre_post_sample, counts, read_changes = \
-        analysis_art(pre_arts, pt_arts, clps, trim_lengths=lengths,
+        analysis_art(pre_arts, pt_arts, clps, trim_lengths=trim_lengths,
                      output_fp=output_fp)
 
     plot_pd(pw_mantel, pre_post, counts, read_changes, output_fp)
