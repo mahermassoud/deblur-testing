@@ -553,14 +553,17 @@ def biom_to_post(input_fp, output_fp, time_out, time_out_append, trim_lengths):
 
     if output_fp.endswith('/'):
         output_fp = output_fp[:-1]
+
+    get_tl = False
     if(len(trim_lengths) == 0):
         trim_lengths = []
+        get_tl = True
 
     pre_arts = []
     pre_bioms = []
     for fp in input_fp:
         as_biom = biom.load_table(fp)
-        if(len(trim_lengths) == 0):
+        if get_tl:
             trim_lengths.append(get_length_biom(as_biom))
         pre_bioms.append(as_biom)
         as_artifact = Artifact.import_data("FeatureTable[Frequency]", as_biom)
