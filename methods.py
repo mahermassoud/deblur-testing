@@ -12,6 +12,7 @@ import biom
 import os
 import scipy
 import skbio.io
+import numpy as np
 from collections import Counter
 
 def import_dataset(working_dir_fp, metadata_barcode_column,
@@ -177,7 +178,11 @@ def get_distance_distribution(pre_table_overlap, post_table_overlap,
             else:
                 a = pre_table_overlap.data(obs, axis=axis, dense=True)
                 b = post_table_overlap.data(obs, axis=axis, dense=True)
-            results.append((obs, fname, f(a, b)))
+
+            d_val = f(a,b)
+            if np.isnan(d_val):
+                raise ArithmeticError("pre-post distance is NaN for obs: {}".format(obs))
+            results.append((obs, fname, d_val))
 
     results = pd.DataFrame(results, columns=columns)
     return results
@@ -294,13 +299,13 @@ def get_pre_post_distance_data(pre_bioms, post_bioms, trim_lengths):
         dists_sample = get_distance_distribution(pre_overlap_biom,
                                                  post_overlap_biom, by_sample=True)
 
-        print("i: {}, dists: {}".format(str(i), str(dists)))
+        #print("i: {}, dists: {}".format(str(i), str(dists)))
 
         dists["length"] = trim_lengths[i]
         dists_sample["length"] = trim_lengths[i]
         all_dists = all_dists.append(dists)
         all_dists_sample = all_dists_sample.append(dists_sample)
-        print("all_dists:\n{}".format(str(all_dists)))
+        #print("all_dists:\n{}".format(str(all_dists)))
 
     print("final all_dists:\n{}".format(str(all_dists)))
     return all_dists, all_dists_sample, pre_overlaps, post_overlaps

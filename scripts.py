@@ -265,11 +265,13 @@ def post_trims_art(output_fp, input_artifact=None, trim_incr=10,
                    "Required that each post-trim has corresponding pre-trim")
 @click.option('-o', '--output-fp',type=click.Path(file_okay=False,exists=True),
               default = None, required=False, help='Path to output csv files')
-@click.option('--trim-incr', type=click.INT, default=10,
+@click.option('--trim-incr', type=click.INT, default=10, required=False,
               help='Percent increment amount for different trim lengths, default 10%')
-@click.option('-n', '--num-trims', type=click.INT, default=5,
+@click.option('-n', '--num-trims', type=click.INT, default=5, required=False,
               help='Number of lengths to trim to, default 5')
-def analysis(input_fp, output_fp, trim_incr, num_trims):
+@click.option("-tl", "--trim-lengths", type=click.INT, multiple=True, required=False,
+              help="Trim lengths")
+def analysis(input_fp, output_fp, trim_incr, num_trims, trim_lengths):
 
     start = time.clock()
     if input_fp.endswith('/'):
@@ -305,9 +307,11 @@ def analysis(input_fp, output_fp, trim_incr, num_trims):
     click.echo("{}s for loading qza's for analysis"\
                .format(str(time.clock() - start)))
 
-    return analysis_art(pre_artifacts, post_artifacts, clps_df,
-                        trim_incr, num_trims, output_fp)
+    if len(trim_lengths) == 0:
+        trim_lengths = None
 
+    return analysis_art(pre_artifacts, post_artifacts, clps_df,
+                        trim_incr, num_trims, output_fp, trim_lengths)
 
 def analysis_art(pre_artifacts, post_artifacts, clps_df=None, trim_incr=10,
                  num_trims=5, output_fp=None, trim_lengths=None,
