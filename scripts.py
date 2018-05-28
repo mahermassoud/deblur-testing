@@ -580,7 +580,7 @@ def biom_to_post(input_fp, output_fp, time_out, time_out_append, trim_lengths):
         analysis_art(pre_arts, pt_arts, clps, trim_lengths=trim_lengths,
                      output_fp=output_fp)
 
-    plot_pd(pw_mantel, pre_post, counts, read_changes, output_fp)
+    plot_pd(pw_mantel, pre_post, pre_post_sample, counts, read_changes, output_fp)
 
     elapsed = time.clock()-start
     click.echo("{}s for entire biom_post()".format(str(elapsed)))
