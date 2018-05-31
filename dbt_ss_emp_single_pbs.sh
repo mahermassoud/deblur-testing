@@ -22,7 +22,7 @@ printf "identifier\truntime\n" > time_elapsed.tsv
 time sbiom -i emp_deblur_150bp_ss_10.biom \
            -i emp_deblur_100bp_ss_10.biom \
            -i emp_deblur_90bp_ss_10.biom  \
-           -o . \
-           -to time_elapsed.tsv \
+           -o single_run_out/ \
+           -to single_run_out/time_elapsed.tsv \
            -toa ss_10_arr-1 \
            -tl 150 -tl 100 -tl 90
