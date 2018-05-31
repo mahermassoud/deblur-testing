@@ -187,7 +187,11 @@ def pre_trims_art(input_artifact, trim_length= 100, trim_incr = 10,
 @click.option('-o', '--output-fp', type=click.Path(), default=None,
               required=True,
               help='Path to output post-trimmed qza files, and collapse.csv')
-def post_trims(input_fp, trim_incr, num_trims, output_fp):
+@click.option("-tl", "--trim-lengths", type=click.INT, multiple=True, required=False,
+              help="Trim lengths")
+@click.option('-on', '--output-name', default="deblurred_pt_", required=False,
+              help="Basename for output post trim qza, length appended")
+def post_trims(input_fp, trim_incr, num_trims, output_fp, trim_lengths, output_name):
     start = time.clock()
     click.echo("Importing seq data from " + input_fp)
     input_artifact = Artifact.load(input_fp)
@@ -196,11 +200,13 @@ def post_trims(input_fp, trim_incr, num_trims, output_fp):
         output_fp = output_fp[:-1]
 
     click.echo("{}s for importing for post_trims".format(str(time.clock() - start)))
-    return post_trims_art(output_fp, input_artifact, trim_incr, num_trims)
+    return post_trims_art(output_fp, input_artifact, trim_incr, num_trims,
+                          trim_lengths, output_name)
 
 
 def post_trims_art(output_fp, input_artifact=None, trim_incr=10,
-                   num_trims=5, trim_lengths=None):
+                   num_trims=5, trim_lengths=None,
+                   output_name="deblurred_pt_"):
     """Post trims to various specified lengths.
     Saves qza's if specified. With naming format "deblurred_pt_<length>.qza
     eg. If input is length 100, trim_incr=10 and num_trims=5, post trims to
@@ -221,6 +227,8 @@ def post_trims_art(output_fp, input_artifact=None, trim_incr=10,
         Path to output deblurred qza files
     trim_lengths: array_like of INT
         lengths we are trimming to
+    output_name: str
+        string that postrimmed qzas are named as, with length appended
 
     Returns
     -------
@@ -249,7 +257,7 @@ def post_trims_art(output_fp, input_artifact=None, trim_incr=10,
         pt_artifact = Artifact.import_data("FeatureTable[Frequency]", pt_biom)
         pt_arts.append(pt_artifact)
         if(output_fp is not None):
-            pt_artifact.save(output_fp + "/deblurred_pt_" + str(l) + ".qza")
+            pt_artifact.save(output_fp + "/" + output_name + str(l) + ".qza")
 
     clps = methods.get_collapse_counts(pt_bioms)
     clps.to_csv(output_fp + "/collapse.csv", index=False)
