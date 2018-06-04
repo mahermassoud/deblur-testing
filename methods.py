@@ -181,6 +181,7 @@ def get_distance_distribution(pre_table_overlap, post_table_overlap,
 
             d_val = f(a, b)
             if np.isnan(d_val):
+                print("d_val was NaN!")
                 d_val = 0 # because f(0,0) returns NaN
             results.append((obs, fname, d_val))
 
@@ -204,9 +205,11 @@ def get_pairwise_dist_mat(deblur_biom, dist_type):
     if(dist_type == "jaccard"):
         deblur_biom = deblur_biom.pa(inplace=False)
 
+    print("starting beta_diversity")
     dist_mat = beta_diversity(dist_type,
-                              deblur_biom.transpose().to_dataframe().as_matrix().astype("int64"),
-                              ids = deblur_biom.ids(axis="sample"))
+                              deblur_biom.transpose().to_dataframe().as_matrix().astype("int64"))
+    print("end beta_diversity")
+    ids = deblur_biom.ids(axis="sample")
     return dist_mat
 
 
@@ -330,6 +333,7 @@ def get_pairwise_diversity_data(pre_bioms, post_bioms, trim_lengths):
     -------
     Pandas dataframe that holds results for each pre-post mantel test
     """
+    print("enter get_pairwise_diversity")
     if(not (len(pre_bioms) == len(post_bioms) == len(trim_lengths))):
         raise ValueError("Length of 3 arguments lists should be same\n"
                          "pre: {}, post: {}, lengths: {}".format(len(pre_bioms),
@@ -352,10 +356,16 @@ def get_pairwise_diversity_data(pre_bioms, post_bioms, trim_lengths):
 
         pre_d_bc = get_pairwise_dist_mat(pre_biom, "braycurtis")
         post_d_bc = get_pairwise_dist_mat(post_biom, "braycurtis")
+        print("pre_d_bc, i: {}".format(i))
+        print(str(pre_d_bc))
+        print("post_d_bc")
+        print(str(post_d_bc))
         r, p, nsamp = mantel(pre_d_bc, post_d_bc)
+        print("r: {}, p: {}".format(str(r),str(p)))
         p_div.iloc[j] = [trim_lengths[i], "braycurtis", r, p, nsamp]
 
     p_div["r_sq"] = p_div["r"]**2
+    print("exit get_pairwise_diversity")
     return p_div
 
 def get_count_data(pre_bioms, pre_overlaps, post_bioms, post_overlaps,
