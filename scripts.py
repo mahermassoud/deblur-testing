@@ -191,7 +191,12 @@ def pre_trims_art(input_artifact, trim_length= 100, trim_incr = 10,
               help="Trim lengths")
 @click.option('-on', '--output-name', default="deblurred_pt_", required=False,
               help="Basename for output post trim qza, length appended")
-def post_trims(input_fp, trim_incr, num_trims, output_fp, trim_lengths, output_name):
+@click.option("-to", "--time-out",
+              help="Path to file we are appending time info to")
+@click.option("-toa", "--time-out-append",
+              help="Identification string to append to time out file")
+def post_trims(input_fp, trim_incr, num_trims, output_fp, trim_lengths,
+               output_name, time_out, time_out_append):
     start = time.clock()
     click.echo("Importing seq data from " + input_fp)
     input_artifact = Artifact.load(input_fp)
@@ -201,12 +206,13 @@ def post_trims(input_fp, trim_incr, num_trims, output_fp, trim_lengths, output_n
 
     click.echo("{}s for importing for post_trims".format(str(time.clock() - start)))
     return post_trims_art(output_fp, input_artifact, trim_incr, num_trims,
-                          trim_lengths, output_name)
+                          trim_lengths, output_name, time_out, time_out_append)
 
 
 def post_trims_art(output_fp, input_artifact=None, trim_incr=10,
                    num_trims=5, trim_lengths=None,
-                   output_name="deblurred_pt_"):
+                   output_name="deblurred_pt_", time_out=None,
+                   time_out_append=None):
     """Post trims to various specified lengths.
     Saves qza's if specified. With naming format "deblurred_pt_<length>.qza
     eg. If input is length 100, trim_incr=10 and num_trims=5, post trims to
@@ -262,7 +268,11 @@ def post_trims_art(output_fp, input_artifact=None, trim_incr=10,
     clps = methods.get_collapse_counts(pt_bioms)
     clps.to_csv(output_fp + "/collapse.csv", index=False)
 
-    click.echo("{}s for post_trims".format(str(time.clock() - start)))
+    elapsed = time.clock() - start
+    click.echo("{}s for post_trims".format(str(elapsed)))
+    if time_out is not None and time_out_append is not None:
+        with open(time_out, "a") as file:
+            file.write("{}\t{}\n".format(time_out_append, str(elapsed)))
     return pt_arts, clps
 
 @click.command()
@@ -556,6 +566,8 @@ def pre_post(input_fp, metadata, metadata_bc_col, rev_bc, rev_map_bc,
               help="Trim lengths")
 def biom_to_post(input_fp, output_fp, time_out, time_out_append, trim_lengths):
     """Runs the analysis pipeline starting from pre trimmed .biom files
+    Do not trim to max length, is implicitly done.
+    Eg. if you want to trim ot lengths 150, 100, 90 only specifpy 100 and 90
     """
     start = time.clock()
 
@@ -583,6 +595,8 @@ def biom_to_post(input_fp, output_fp, time_out, time_out_append, trim_lengths):
 
     pt_arts, clps = post_trims_art(output_fp, pre_arts[0],
                                    trim_lengths=trim_lengths)
+
+    pt_arts.insert(pre_arts[0], 0)
 
     pw_mantel, pre_post, pre_post_sample, counts, read_changes = \
         analysis_art(pre_arts, pt_arts, clps, trim_lengths=trim_lengths,
