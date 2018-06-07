@@ -780,6 +780,25 @@ def subsample_biom(main_input_fp, ot_input_fp, start, end, count, output_fp):
 
     return output_bioms
 
+@click.command()
+@click.option("-pre","--pre-fp", type=click.Path(exists=True, dir_okay=False),
+              required=True, multiple=True, help="Path to input pre_trim biom")
+@click.option("-pt","--post-fp", type=click.Path(exists=True, dir_okay=False),
+              required=True, multiple=True, help="Path to input post_trim biom")
+@click.option("tl", "--trim-length", type=click.INT, multiple=True,
+              help="Trim lengths")
+@click.option('-o', '--output-fp',type=click.Path(file_okay=False, exists=True),
+              default = None, required=False,
+              help='Path to output pairwise_mantel.csv')
+def pairwise_mantel(pre_fp, post_fp, trim_length, output_fp):
+    pre_bioms = [biom.load_table(fp) for fp in pre_fp]
+    pt_bioms = [biom.load_table(fp) for fp in post_fp]
+    if trim_length is None:
+        trim_length = np.zeros(len(pre_bioms))
+
+    df = methods.get_pairwise_diversity_data(pre_bioms, pt_bioms, trim_length)
+    df.to_csv(output_fp, index=False)
+
 def contains_ids(bioms, ids, axis):
     """Given a list of bioms, determines whether they all have a list of
     ids"""
