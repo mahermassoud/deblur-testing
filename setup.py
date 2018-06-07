@@ -21,6 +21,7 @@ setup(
         biom2qza=scripts:biom_to_qiime
         qza2biom=scripts:qiime_to_biom
         ssbiom=scripts:subsample_biom
+        pw_mantel=scripts:pairwise_mantel
     ''',
 )
 

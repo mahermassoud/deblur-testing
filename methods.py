@@ -87,7 +87,7 @@ def do_deblur(demuxed_seqs, pre_trim_length, num_cores = 1):
 
 
 
-def post_trim(db_biom, length):
+def post_trim(db_biom, length, partition_count=None):
     """Trims a deblurred set of seqs
 
     Parameters
@@ -96,6 +96,9 @@ def post_trim(db_biom, length):
         deblurred seqs as biom table
     length: int
         length to trim to
+    partition_count: int
+        if not None, partitions table into partition_count tables and
+        does post_trimming sepparetly then concatenates the tables
 
     Returns
     -------
@@ -334,7 +337,6 @@ def get_pairwise_diversity_data(pre_bioms, post_bioms, trim_lengths):
     Pandas dataframe that holds results for each pre-post mantel test
     """
     print("enter get_pairwise_diversity")
-    np.seterr(all='raise')
     if(not (len(pre_bioms) == len(post_bioms) == len(trim_lengths))):
         raise ValueError("Length of 3 arguments lists should be same\n"
                          "pre: {}, post: {}, lengths: {}".format(len(pre_bioms),
