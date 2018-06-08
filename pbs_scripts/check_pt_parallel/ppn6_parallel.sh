@@ -6,7 +6,7 @@
 
 #PBS -l mem=10gb
 
-#PBS -N check ppn6_cmp_parallel_pt
+#PBS -N check_ppn6_cmp_parallel_pt
 
 #PBS -m bea
 #PBS -M mahermassoud@gmail.com

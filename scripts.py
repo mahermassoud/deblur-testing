@@ -648,17 +648,17 @@ def qiime_to_biom(input_fp, output_fp):
         f.write(as_json)
 
 @click.command()
-@click.argument("-nr", "--n-row", type=click.INT, required=False,
+@click.argument("-nr", "--n-row", type=click.INT, required=False, default=100,
                 help="Number of rows/observations")
-@click.argument("-nc", "--n-col", type=click.INT, required=False,
+@click.argument("-nc", "--n-col", type=click.INT, required=False, default=100,
                 help="Number of columns/samples")
 @click.argument("-o", "--output-fp", type=click.Path(dir_okay=False),
-                help="Output path for biom table as json")
-@click.argument("-l", "--len-seq", type=click.INT,
+                default=None, help="Output path for biom table as json")
+@click.argument("-l", "--len-seq", type=click.INT, default=150,
                 help="Length of sequences")
-@click.option("--scale", type=click.INT,
+@click.option("--scale", type=click.INT, default=1000,
               help="Factor to scale random numbers by")
-def make_rand_biom(n_row=100, n_col=100, output_fp=None, len_seq=150, scale=1000):
+def make_rand_biom(n_row, n_col, output_fp, len_seq, scale):
     """
     Makes a random biom table
     """

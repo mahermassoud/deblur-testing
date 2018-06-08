@@ -6,7 +6,7 @@
 
 #PBS -l mem=10gb
 
-#PBS -N check ppn3_cmp_np_pt
+#PBS -N check_ppn3_cmp_np_pt
 
 #PBS -m bea
 #PBS -M mahermassoud@gmail.com
