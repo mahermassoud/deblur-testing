@@ -109,6 +109,7 @@ def post_trim(db_biom, length, partition_count=None):
         pt_biom = db_biom.collapse(lambda i, m: i[:length], axis="observation",
                                    norm=False, include_collapsed_metadata=True)
     else:
+        print("Doing parallel post-trim, mp find {} cpu's".format(mp.cpu_count()))
         sub_bioms = partition_table(db_biom, partition_count)
 
         pool = mp.ProcessPool(nodes=partition_count)
