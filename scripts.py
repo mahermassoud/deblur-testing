@@ -785,9 +785,9 @@ def subsample_biom(main_input_fp, ot_input_fp, start, end, count, output_fp):
               required=True, multiple=True, help="Path to input pre_trim biom")
 @click.option("-pt","--post-fp", type=click.Path(exists=True, dir_okay=False),
               required=True, multiple=True, help="Path to input post_trim biom")
-@click.option("tl", "--trim-length", type=click.INT, multiple=True,
+@click.option("-tl", "--trim-length", type=click.INT, multiple=True,
               help="Trim lengths")
-@click.option('-o', '--output-fp',type=click.Path(file_okay=False, exists=True),
+@click.option('-o', '--output-fp',type=click.Path(dir_okay=False),
               default = None, required=False,
               help='Path to output pairwise_mantel.csv')
 def pairwise_mantel(pre_fp, post_fp, trim_length, output_fp):
