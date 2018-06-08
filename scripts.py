@@ -581,11 +581,17 @@ def biom_to_post(input_fp, output_fp, time_out, time_out_append, trim_lengths):
 
     pre_arts = []
     pre_bioms = []
+    print(input_fp)
+    input_fp = list(input_fp)
+    click.echo("fooooooo")
+    print(input_fp)
     for fp in input_fp:
         as_biom = biom.load_table(fp)
+        print(type(as_biom))
         if get_tl:
             trim_lengths.append(get_length_biom(as_biom))
         pre_bioms.append(as_biom)
+        print(type(as_biom))
         as_artifact = Artifact.import_data("FeatureTable[Frequency]", as_biom)
         as_artifact.save(output_fp + "/" + os.path.basename(fp))
         pre_arts.append(as_artifact)
@@ -596,7 +602,7 @@ def biom_to_post(input_fp, output_fp, time_out, time_out_append, trim_lengths):
     pt_arts, clps = post_trims_art(output_fp, pre_arts[0],
                                    trim_lengths=trim_lengths)
 
-    pt_arts.insert(pre_arts[0], 0)
+    pt_arts.insert(0, pre_arts[0])
 
     pw_mantel, pre_post, pre_post_sample, counts, read_changes = \
         analysis_art(pre_arts, pt_arts, clps, trim_lengths=trim_lengths,
@@ -635,6 +641,35 @@ def qiime_to_biom(input_fp, output_fp):
     as_json = as_biom.to_json(generated_by="deblur-testing")
     with open(output_fp, "w") as f:
         f.write(as_json)
+
+#@click.command()
+#@click.argument("-nr", "--n-row", type=click.INT, required=True,
+#                help="Number of rows/observations")
+#@click.argument("-nc", "--n-col", type=click.INT, required=True,
+#                help="Number of columns/samples")
+#@click.argument("-o", "--output-fp", type=click.Path(dir_okay=False),
+#                help="Output path for biom table as json")
+#@click.argument("-l", "--len-seq")
+#def make_random_table(n_row, n_col, output_fp=None, len_seq=150, scale=1000):
+#    """
+#    Makes a random biom table
+#    """
+#    oids = []
+#    for j in range(n_obs):
+#        oid = ""
+#        for i in range(len_seq):
+#            oid += choice("ACTG")
+#        oids.append(oid)
+#
+#    vals = (np.random.rand(n_obs, n_sample)*scale).astype(int)
+#    sids = ["s"+str(x) for x in range(n_sample)]
+#    tbl = biom.Table(vals, oids, sids)
+#
+#    if o_fp is not None:
+#        with open(o_fp, "w") as file:
+#            tbl.to_json("mamaher", file)
+#
+#    return tbl
 
 @click.command()
 @click.option("-mi","--max-length-biom-fp", type=click.Path(dir_okay=False, exists=True),
