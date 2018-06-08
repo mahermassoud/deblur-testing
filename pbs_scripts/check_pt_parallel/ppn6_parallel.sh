@@ -16,12 +16,11 @@
 
 i_dir="/panfs/panfs1.ucsd.edu/panscratch/mamaher/cmp_pt"
 o_dir="/panfs/panfs1.ucsd.edu/panscratch/mamaher/cmp_pt/ppn6"
-o_name="rand_1000x1000_ppn_6_parallel_arr_$PBS_ARRAYID"
+o_name="rand_1000x1000_ppn6_parallel"
 
 source activate q2env
 mkdir -p $o_dir
 cd $i_dir
-printf "identifier\truntime\n" > $o_dir"/"elapsed.tsv
 
 time rpost_trim -i  rand_1000x1000.qza \
                 -o $o_dir\

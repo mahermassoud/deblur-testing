@@ -6,17 +6,16 @@
 
 #PBS -l mem=10gb
 
-#PBS -N check_ppn8_cmp_parallel_pt
+#PBS -N check_ppn8_cmp_np_pt
 
 #PBS -m bea
 #PBS -M mahermassoud@gmail.com
 
 #PBS -k oe
-#PBS -t 1-3
 
 i_dir="/panfs/panfs1.ucsd.edu/panscratch/mamaher/cmp_pt"
-o_dir="/panfs/panfs1.ucsd.edu/panscratch/mamaher/cmp_pt/ppn8"
-o_name="rand_1000x1000_ppn8_parallel"
+o_dir="/panfs/panfs1.ucsd.edu/panscratch/mamaher/cmp_pt/ppn8_np"
+o_name="rand_1000x1000_ppn8_np"
 
 source activate q2env
 mkdir -p $o_dir
@@ -28,4 +27,3 @@ time rpost_trim -i  rand_1000x1000.qza \
                 -on $o_name \
                 -to elapsed.tsv \
                 -toa $o_name \
-                -pc 8
