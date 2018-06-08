@@ -241,6 +241,22 @@ class TestPostTrim(TestCase):
                              axis="observation")
         self.assertEqual(str(self.exp_pt), str(obs))
 
+    def test_post_trim_parallel_even(self):
+        obs = post_trim(self.t, 3, 2)
+
+        # Sort them
+        obs = obs.sort_order(self.exp_pt.ids(axis="observation"),
+                             axis="observation")
+        self.assertEqual(str(self.exp_pt), str(obs))
+
+    def test_post_trim_parallel_odd(self):
+        obs = post_trim(self.t, 3, 3)
+
+        # Sort them
+        obs = obs.sort_order(self.exp_pt.ids(axis="observation"),
+                             axis="observation")
+        self.assertEqual(str(self.exp_pt), str(obs))
+
     def test_pt_metadata(self):
         obs = post_trim(self.t, 3)
         obs_md = obs.metadata(id="AAT", axis="observation")["collapsed_ids"]

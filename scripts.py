@@ -1,6 +1,7 @@
 import click
 from qiime2 import Artifact, Metadata
 from qiime2.plugins.demux.methods import emp_single
+from random import choice
 import methods
 import seaborn as sns
 import matplotlib.pyplot as plt
@@ -195,8 +196,11 @@ def pre_trims_art(input_artifact, trim_length= 100, trim_incr = 10,
               help="Path to file we are appending time info to")
 @click.option("-toa", "--time-out-append",
               help="Identification string to append to time out file")
+@click.option("-pc", "--partition-count", type=click.INT,
+              help="How many parallel processes to run when"
+                   "post trimming")
 def post_trims(input_fp, trim_incr, num_trims, output_fp, trim_lengths,
-               output_name, time_out, time_out_append):
+               output_name, time_out, time_out_append, partition_count):
     start = time.clock()
     click.echo("Importing seq data from " + input_fp)
     input_artifact = Artifact.load(input_fp)
@@ -206,13 +210,14 @@ def post_trims(input_fp, trim_incr, num_trims, output_fp, trim_lengths,
 
     click.echo("{}s for importing for post_trims".format(str(time.clock() - start)))
     return post_trims_art(output_fp, input_artifact, trim_incr, num_trims,
-                          trim_lengths, output_name, time_out, time_out_append)
+                          trim_lengths, output_name, time_out, time_out_append,
+                          partition_count)
 
 
 def post_trims_art(output_fp, input_artifact=None, trim_incr=10,
                    num_trims=5, trim_lengths=None,
                    output_name="deblurred_pt_", time_out=None,
-                   time_out_append=None):
+                   time_out_append=None, partition_count=None):
     """Post trims to various specified lengths.
     Saves qza's if specified. With naming format "deblurred_pt_<length>.qza
     eg. If input is length 100, trim_incr=10 and num_trims=5, post trims to
@@ -258,7 +263,7 @@ def post_trims_art(output_fp, input_artifact=None, trim_incr=10,
     pt_arts = []
     for l in trim_lengths:
         click.echo("Post-trimming to length {}".format(str(l)))
-        pt_biom = methods.post_trim(input_biom, l)
+        pt_biom = methods.post_trim(input_biom, l, partition_count)
         pt_bioms.append(pt_biom)
         pt_artifact = Artifact.import_data("FeatureTable[Frequency]", pt_biom)
         pt_arts.append(pt_artifact)
@@ -642,34 +647,37 @@ def qiime_to_biom(input_fp, output_fp):
     with open(output_fp, "w") as f:
         f.write(as_json)
 
-#@click.command()
-#@click.argument("-nr", "--n-row", type=click.INT, required=True,
-#                help="Number of rows/observations")
-#@click.argument("-nc", "--n-col", type=click.INT, required=True,
-#                help="Number of columns/samples")
-#@click.argument("-o", "--output-fp", type=click.Path(dir_okay=False),
-#                help="Output path for biom table as json")
-#@click.argument("-l", "--len-seq")
-#def make_random_table(n_row, n_col, output_fp=None, len_seq=150, scale=1000):
-#    """
-#    Makes a random biom table
-#    """
-#    oids = []
-#    for j in range(n_obs):
-#        oid = ""
-#        for i in range(len_seq):
-#            oid += choice("ACTG")
-#        oids.append(oid)
-#
-#    vals = (np.random.rand(n_obs, n_sample)*scale).astype(int)
-#    sids = ["s"+str(x) for x in range(n_sample)]
-#    tbl = biom.Table(vals, oids, sids)
-#
-#    if o_fp is not None:
-#        with open(o_fp, "w") as file:
-#            tbl.to_json("mamaher", file)
-#
-#    return tbl
+@click.command()
+@click.argument("-nr", "--n-row", type=click.INT, required=False,
+                help="Number of rows/observations")
+@click.argument("-nc", "--n-col", type=click.INT, required=False,
+                help="Number of columns/samples")
+@click.argument("-o", "--output-fp", type=click.Path(dir_okay=False),
+                help="Output path for biom table as json")
+@click.argument("-l", "--len-seq", type=click.INT,
+                help="Length of sequences")
+@click.option("--scale", type=click.INT,
+              help="Factor to scale random numbers by")
+def make_rand_biom(n_row=100, n_col=100, output_fp=None, len_seq=150, scale=1000):
+    """
+    Makes a random biom table
+    """
+    oids = []
+    for j in range(n_row):
+        oid = ""
+        for i in range(len_seq):
+            oid += choice("ACTG")
+        oids.append(oid)
+
+    vals = (np.random.rand(n_row, n_col)*scale).astype(int)
+    sids = ["s"+str(x) for x in range(n_col)]
+    tbl = biom.Table(vals, oids, sids)
+
+    if output_fp is not None:
+        with open(output_fp, "w") as file:
+            tbl.to_json("mamaher", file)
+
+    return tbl
 
 @click.command()
 @click.option("-mi","--max-length-biom-fp", type=click.Path(dir_okay=False, exists=True),

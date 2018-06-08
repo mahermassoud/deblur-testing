@@ -7,7 +7,7 @@ from q2_types.per_sample_sequences import SingleLanePerSampleSingleEndFastqDirFm
 from skbio.diversity import beta_diversity
 from skbio.stats.distance import mantel
 import pandas as pd
-import wget
+import pathos.multiprocessing as mp
 import biom
 import os
 import scipy
@@ -105,10 +105,60 @@ def post_trim(db_biom, length, partition_count=None):
     biom.Table of trimmed,deblurred seqs
     """
     print("Trimming post-demuxed seqs to {:d}".format(length))
-    pt_biom = db_biom.collapse(lambda i, m: i[:length], axis="observation",
-                               norm=False, include_collapsed_metadata=True)
+    if partition_count is None :
+        pt_biom = db_biom.collapse(lambda i, m: i[:length], axis="observation",
+                                   norm=False, include_collapsed_metadata=True)
+    else:
+        sub_bioms = partition_table(db_biom, partition_count)
+
+        pool = mp.ProcessPool(nodes=partition_count)
+        args = [(sb, length) for sb in sub_bioms]
+        pt_bioms = pool.map(single_post_trim, args)
+
+        args = list(divide_chunks(pt_bioms, 2))
+        while len(args) >= 1:
+            print("len args {}\n\n".format(len(args)))
+
+            pool = mp.ProcessPool(nodes=len(args))
+            pt_bioms = pool.map(intersect_bioms, args)
+
+            args = list(divide_chunks(pt_bioms, 2))
+            if args is None:
+              break
+
+        pt_biom = pt_bioms[0]
 
     return pt_biom
+
+def partition_table(tbl, partition_count):
+    df = tbl.to_dataframe()
+    dfs = np.array_split(df, partition_count, axis=1)
+    return [biom.Table(np.array(x), x.index, x.columns) for x in dfs]
+
+def single_post_trim(db_biom_length):
+  db_biom = db_biom_length[0]
+  length = db_biom_length[1]
+  print("Trimming post-demuxed seqs to {:d}".format(length))
+  pt_biom = db_biom.collapse(lambda i, m: i[:length], axis="observation",
+                             norm=False, include_collapsed_metadata=True)
+
+  return pt_biom
+
+def divide_chunks(l, n):
+    """
+    Divides a list into sub lists of length n
+    """
+    if len(l) == 1:
+      return None
+    for i in range(0, len(l), n):
+        yield l[i:i + n]
+
+def intersect_bioms(bioms):
+  if len(bioms) == 1:
+    return bioms[0]
+  else:
+    return bioms[0].merge(bioms[1])
+
 
 def get_collapse_counts(pt_bioms):
     """Fore each trim length and OTU , says how many times otu was collapsed to
