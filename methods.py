@@ -387,6 +387,7 @@ def get_pairwise_diversity_data(pre_bioms, post_bioms, trim_lengths):
     Pandas dataframe that holds results for each pre-post mantel test
     """
     print("enter get_pairwise_diversity")
+    np.seterr(all="raise")
     if(not (len(pre_bioms) == len(post_bioms) == len(trim_lengths))):
         raise ValueError("Length of 3 arguments lists should be same\n"
                          "pre: {}, post: {}, lengths: {}".format(len(pre_bioms),
