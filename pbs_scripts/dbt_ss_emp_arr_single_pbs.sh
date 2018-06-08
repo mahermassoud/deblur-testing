@@ -27,15 +27,6 @@ time sbiom -i emp_deblur_150bp_ss_10.biom \
            -to time_elapsed_single.tsv \
            -toa ss_10
 
-mkdir -p ss_32
-time sbiom -i emp_deblur_150bp_ss_32.biom \
-           -i emp_deblur_100bp_ss_32.biom \
-           -i emp_deblur_90bp_ss_32.biom  \
-           -o . \
-           -o ss_32/ \
-           -to time_elapsed_single.tsv \
-           -toa ss_32
-
 mkdir -p ss_55
 time sbiom -i emp_deblur_150bp_ss_55.biom \
            -i emp_deblur_100bp_ss_55.biom \
@@ -43,14 +34,6 @@ time sbiom -i emp_deblur_150bp_ss_55.biom \
            -o ss_55/ \
            -to time_elapsed_single.tsv \
            -toa ss_55
-
-mkdir -p ss_77
-time sbiom -i emp_deblur_150bp_ss_77.biom \
-           -i emp_deblur_100bp_ss_77.biom \
-           -i emp_deblur_90bp_ss_77.biom  \
-           -o ss_77/ \
-           -to time_elapsed_single.tsv \
-           -toa ss_77
 
 mkdir -p ss_100
 time sbiom -i emp_deblur_150bp_ss_100.biom \

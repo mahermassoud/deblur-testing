@@ -605,7 +605,7 @@ def biom_to_post(input_fp, output_fp, time_out, time_out_append, trim_lengths):
     pre_arts = [x for _,x in sorted(zip(trim_lengths, pre_arts), reverse=True)]
 
     pt_arts, clps = post_trims_art(output_fp, pre_arts[0],
-                                   trim_lengths=trim_lengths)
+                                   trim_lengths=trim_lengths[1:])
 
     pt_arts.insert(0, pre_arts[0])
 
