@@ -4,7 +4,7 @@
 
 #PBS -l walltime=50:00:00
 
-#PBS -l mem=30gb
+#PBS -l mem=70gb
 
 #PBS -N post_trim_emp_90nt
 
@@ -21,8 +21,8 @@ source activate q2env
 mkdir -p $i_dir
 cd $i_dir
 
-time rpost_trim -ib $fp_100nt \
-                -o $o_dir\
+time rpost_trim -ib $fp_150nt \
+                -o $i_dir \
                 -tl 90 \
                 -on $o_name \
                 -to elapsed.tsv \
