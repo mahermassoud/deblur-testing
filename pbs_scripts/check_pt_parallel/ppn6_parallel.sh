@@ -12,7 +12,6 @@
 #PBS -M mahermassoud@gmail.com
 
 #PBS -k oe
-#PBS -t 1-3
 
 i_dir="/panfs/panfs1.ucsd.edu/panscratch/mamaher/cmp_pt"
 o_dir="/panfs/panfs1.ucsd.edu/panscratch/mamaher/cmp_pt/ppn6"
