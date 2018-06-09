@@ -131,10 +131,17 @@ def post_trim(db_biom, length, partition_count=None):
 
     return pt_biom
 
-def partition_table(tbl, partition_count):
+def partition_table(tbl, partition_count, parallel=True):
     df = tbl.to_dataframe()
     dfs = np.array_split(df, partition_count, axis=1)
-    return [biom.Table(np.array(x), x.index, x.columns) for x in dfs]
+
+    pool = mp.ProcessPool(nodes=len(dfs))
+    args = [(np.array(x), x.index, x.columns) for x in dfs]
+    results = pool.map(make_biom, args)
+    return results
+
+def make_biom(dat_obs_sample):
+    return biom.Table(dat_obs_sample[0], dat_obs_sample[1], dat_obs_sample[2])
 
 def single_post_trim(db_biom_length):
   db_biom = db_biom_length[0]
