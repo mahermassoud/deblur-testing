@@ -287,7 +287,7 @@ def post_trims_art(output_fp, input_artifact=None, trim_incr=10,
         if(output_fp is not None):
             pt_artifact.save(output_fp + "/" + output_name + str(l) + ".qza")
         if(save_biom):
-            with open(output_fp + "/" + output_name + str(l) + ".qza", "w") as file:
+            with open(output_fp + "/" + output_name + str(l) + ".biom", "w") as file:
                 pt_biom.to_json("deblur-testing", file)
 
     clps = methods.get_collapse_counts(pt_bioms)
