@@ -22,7 +22,7 @@ mkdir -p $i_dir
 cd $i_dir
 
 time rpost_trim -ib $fp_100nt \
-                -o $o_dir\
+                -o $o_dir \
                 -tl 100 \
                 -on $o_name \
                 -to elapsed.tsv \

@@ -266,12 +266,12 @@ def post_trims_art(output_fp, input_artifact=None, trim_incr=10,
     if(input_biom is None):
         input_biom = input_artifact.view(biom.Table)
 
-    otus = input_biom.ids(axis="observation")
-    trim_length = len(otus[0])
-    for otu in otus:
-        if(len(otu) != trim_length):
-            raise ValueError("Input table reads are not all same length. Invalid")
-            return
+    #otus = input_biom.ids(axis="observation")
+    #trim_length = len(otus[0])
+    #for otu in otus:
+    #    if(len(otu) != trim_length):
+    #        raise ValueError("Input table reads are not all same length. Invalid")
+    #        return
 
     if(trim_lengths is None or len(trim_lengths) == 0):
         trim_lengths, percent = calculate_trim_lengths(trim_length, trim_incr,
