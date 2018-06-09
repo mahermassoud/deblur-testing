@@ -180,15 +180,11 @@ def pre_trims_art(input_artifact, trim_length= 100, trim_incr = 10,
 @click.command()
 @click.option("-i","--input-fp", type=click.Path(exists=True, dir_okay=False),
               help="Path to deblurred qza that we are post-trimming")
-@click.option('--trim-incr', type=click.INT, default=10,
-              help='Percent increment amount for different trim lengths, default 10%')
-@click.option('-n', '--num-trims', type=click.INT, default=5,
-              help='Number of lengths to trim to, default 5')
 @click.option('-o', '--output-fp', type=click.Path(), default=None,
               required=True,
               help='Path to output post-trimmed qza files, and collapse.csv')
 @click.option("-tl", "--trim-lengths", type=click.INT, multiple=True, required=False,
-              help="Trim lengths")
+              default=[100,90], help="Trim lengths")
 @click.option('-on', '--output-name', default="deblurred_pt_", required=False,
               help="Basename for output post trim qza, length appended")
 @click.option("-to", "--time-out",
@@ -201,7 +197,7 @@ def pre_trims_art(input_artifact, trim_length= 100, trim_incr = 10,
 @click.option("-ib", "--input-biom-fp", type=click.Path(dir_okay=False, exists=True),
               help="Path to biom table we are demuxing")
 @click.option("-sb", "--save-biom", is_flag=True)
-def post_trims(input_fp, trim_incr, num_trims, output_fp, trim_lengths,
+def post_trims(input_fp, output_fp, trim_lengths,
                output_name, time_out, time_out_append, partition_count,
                input_biom_fp, save_biom):
     start = time.clock()
@@ -222,13 +218,13 @@ def post_trims(input_fp, trim_incr, num_trims, output_fp, trim_lengths,
 
 
     click.echo("{}s for importing for post_trims".format(str(time.clock() - start)))
-    return post_trims_art(output_fp, input_artifact, trim_incr, num_trims,
+    return post_trims_art(output_fp, input_artifact,
                           trim_lengths, output_name, time_out, time_out_append,
                           partition_count, input_biom, save_biom)
 
 
-def post_trims_art(output_fp, input_artifact=None, trim_incr=10,
-                   num_trims=5, trim_lengths=None,
+def post_trims_art(output_fp, input_artifact=None,
+                   trim_lengths=[100,90],
                    output_name="deblurred_pt_", time_out=None,
                    time_out_append=None, partition_count=None, input_biom=None,
                    save_biom=False):
@@ -273,32 +269,29 @@ def post_trims_art(output_fp, input_artifact=None, trim_incr=10,
     #        raise ValueError("Input table reads are not all same length. Invalid")
     #        return
 
-    if(trim_lengths is None or len(trim_lengths) == 0):
-        trim_lengths, percent = calculate_trim_lengths(trim_length, trim_incr,
-                                                       num_trims)
     pt_bioms = []
     pt_arts = []
     for l in trim_lengths:
         click.echo("Post-trimming to length {}".format(str(l)))
         pt_biom = methods.post_trim(input_biom, l, partition_count)
-        pt_bioms.append(pt_biom)
+        #pt_bioms.append(pt_biom)
         pt_artifact = Artifact.import_data("FeatureTable[Frequency]", pt_biom)
-        pt_arts.append(pt_artifact)
+        #pt_arts.append(pt_artifact)
         if(output_fp is not None):
             pt_artifact.save(output_fp + "/" + output_name + str(l) + ".qza")
         if(save_biom):
             with open(output_fp + "/" + output_name + str(l) + ".biom", "w") as file:
                 pt_biom.to_json("deblur-testing", file)
 
-    clps = methods.get_collapse_counts(pt_bioms)
-    clps.to_csv(output_fp + "/collapse.csv", index=False)
+    #clps = methods.get_collapse_counts(pt_bioms)
+    #clps.to_csv(output_fp + "/collapse.csv", index=False)
 
     elapsed = time.clock() - start
     click.echo("{}s for post_trims".format(str(elapsed)))
     if time_out is not None and time_out_append is not None:
         with open(time_out, "a") as file:
             file.write("{}\t{}\n".format(time_out_append, str(elapsed)))
-    return pt_arts, clps
+    return pt_arts
 
 @click.command()
 @click.option("-i","--input-fp", type=click.Path(exists=True, file_okay=False),

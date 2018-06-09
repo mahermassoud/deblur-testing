@@ -1,4 +1,5 @@
 from qiime2 import Artifact
+import time
 from qiime2 import Metadata
 from qiime2.plugins.demux.methods import emp_single
 from qiime2.plugins.quality_filter.methods import q_score
@@ -111,6 +112,7 @@ def post_trim(db_biom, length, partition_count=None):
     else:
         print("Doing parallel post-trim, mp find {} cpu's".format(mp.cpu_count()))
         sub_bioms = partition_table(db_biom, partition_count)
+        print("partition_Table() end at " + time.strftime("[%H:%M:%S]"))
 
         pool = mp.ProcessPool(nodes=partition_count)
         args = [(sb, length) for sb in sub_bioms]
@@ -132,6 +134,7 @@ def post_trim(db_biom, length, partition_count=None):
     return pt_biom
 
 def partition_table(tbl, partition_count, parallel=True):
+    print("partition_Table() starting at " + time.strftime("[%H:%M:%S]"))
     df = tbl.to_dataframe()
     dfs = np.array_split(df, partition_count, axis=1)
 

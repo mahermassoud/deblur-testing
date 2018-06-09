@@ -59,18 +59,38 @@ class TestPreTrims(TestCase):
 class TestPostTrims(TestCase):
     def setUp(self):
         self.db_path = dir_path + "/data/mock-3-demo/deblurred_pre_150.qza"
-        self.exp_out = ["deblurred_pt_150.qza", "deblurred_pt_135.qza",
-                        "deblurred_pt_120.qza", "deblurred_pt_105.qza",
+        self.biom_path = dir_path + "/data/pre_rand_500x500.biom"
+        self.exp_out = ["deblurred_pt_100.qza",
                         "deblurred_pt_90.qza", "collapse.csv"]
+        self.exp_out_biom = ["rand_500x500_pt_100.qza", "rand_500x500_pt_100.biom",
+                             "collapse.csv", "elapsed.tsv"]
 
     def test_post_trims(self):
         runner = CliRunner()
         with runner.isolated_filesystem():
-            result = runner.invoke(post_trims, ["-i", self.db_path, "-o", "."])
+            result = runner.invoke(post_trims, ["-i", self.db_path,
+                                                "-o", "."])
             out_files = listdir(os.getcwd())
 
             self.assertEqual(0, result.exit_code, msg=result.exc_info)
             self.assertCountEqual(self.exp_out, out_files)
+
+
+    def test_post_trims_biom_in(self):
+        runner = CliRunner()
+        with runner.isolated_filesystem():
+            result = runner.invoke(post_trims, ["-ib", self.biom_path,
+                                                "-o", ".",
+                                                "-tl", 100,
+                                                "-on", "rand_500x500_pt_",
+                                                "-to", "elapsed.tsv",
+                                                "-toa", "rand_500x_500",
+                                                "-pc", 2,
+                                                "-sb"])
+            out_files = listdir(os.getcwd())
+
+            self.assertEqual(0, result.exit_code, msg=result.exc_info)
+            self.assertCountEqual(self.exp_out_biom, out_files)
 
 class TestAnalysis(TestCase):
     def setUp(self):
