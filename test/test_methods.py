@@ -320,9 +320,8 @@ class TestGetOverlap(TestCase):
         self.assertEqual(self.some2_exp, obs2)
 
     def test_no_overlap(self):
-        obs1, obs2 = get_overlap_tables(self.none, self.some1)
-        self.assertTrue(len(obs1.ids(axis="observation")) == 0)
-        self.assertTrue(len(obs2.ids(axis="observation")) == 0)
+        with self.assertRaises(ValueError):
+            get_overlap_tables(self.none, self.some1)
 
 class TestGetCountData(TestCase):
     def setUp(self):

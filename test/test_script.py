@@ -136,7 +136,7 @@ class TestAll(TestCase):
                         "pre_post_sample.csv",
                         "counts.csv", "read_changes.csv", 'collapse.png',
                         'counts.png', 'pairwise_mantel.png', 'pre_post.png',
-                        'read_changes.png']
+                        'read_changes.png', 'pre_post_sample.png']
 
     def test_pre_post(self):
         runner = CliRunner()

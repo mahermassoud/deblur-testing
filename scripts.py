@@ -179,7 +179,6 @@ def pre_trims_art(input_artifact, trim_length= 100, trim_incr = 10,
 
 @click.command()
 @click.option("-i","--input-fp", type=click.Path(exists=True, dir_okay=False),
-              required=True,
               help="Path to deblurred qza that we are post-trimming")
 @click.option('--trim-incr', type=click.INT, default=10,
               help='Percent increment amount for different trim lengths, default 10%')
@@ -199,25 +198,40 @@ def pre_trims_art(input_artifact, trim_length= 100, trim_incr = 10,
 @click.option("-pc", "--partition-count", type=click.INT,
               help="How many parallel processes to run when"
                    "post trimming")
+@click.option("-ib", "--input-biom-fp", type=click.Path(dir_okay=False, exists=True),
+              help="Path to biom table we are demuxing")
+@click.option("-sb", "--save-biom", is_flag=True)
 def post_trims(input_fp, trim_incr, num_trims, output_fp, trim_lengths,
-               output_name, time_out, time_out_append, partition_count):
+               output_name, time_out, time_out_append, partition_count,
+               input_biom_fp, save_biom):
     start = time.clock()
-    click.echo("Importing seq data from " + input_fp)
-    input_artifact = Artifact.load(input_fp)
 
     if output_fp.endswith('/'):
         output_fp = output_fp[:-1]
 
+    if(input_fp is None and input_biom_fp is None):
+        click.echo("No input given! See --help")
+        return
+    elif (input_fp is None):
+        input_artifact = None
+        input_biom = biom.load_table(input_biom_fp)
+    else:
+        click.echo("Importing seq data from " + input_fp)
+        input_artifact = Artifact.load(input_fp)
+        input_biom=None
+
+
     click.echo("{}s for importing for post_trims".format(str(time.clock() - start)))
     return post_trims_art(output_fp, input_artifact, trim_incr, num_trims,
                           trim_lengths, output_name, time_out, time_out_append,
-                          partition_count)
+                          partition_count, input_biom, save_biom)
 
 
 def post_trims_art(output_fp, input_artifact=None, trim_incr=10,
                    num_trims=5, trim_lengths=None,
                    output_name="deblurred_pt_", time_out=None,
-                   time_out_append=None, partition_count=None):
+                   time_out_append=None, partition_count=None, input_biom=None,
+                   save_biom=False):
     """Post trims to various specified lengths.
     Saves qza's if specified. With naming format "deblurred_pt_<length>.qza
     eg. If input is length 100, trim_incr=10 and num_trims=5, post trims to
@@ -248,7 +262,10 @@ def post_trims_art(output_fp, input_artifact=None, trim_incr=10,
     pandas.DataFrame of collapse data
     """
     start = time.clock()
-    input_biom = input_artifact.view(biom.Table)
+
+    if(input_biom is None):
+        input_biom = input_artifact.view(biom.Table)
+
     otus = input_biom.ids(axis="observation")
     trim_length = len(otus[0])
     for otu in otus:
@@ -256,7 +273,7 @@ def post_trims_art(output_fp, input_artifact=None, trim_incr=10,
             raise ValueError("Input table reads are not all same length. Invalid")
             return
 
-    if(trim_lengths is None):
+    if(trim_lengths is None or len(trim_lengths) == 0):
         trim_lengths, percent = calculate_trim_lengths(trim_length, trim_incr,
                                                        num_trims)
     pt_bioms = []
@@ -269,6 +286,9 @@ def post_trims_art(output_fp, input_artifact=None, trim_incr=10,
         pt_arts.append(pt_artifact)
         if(output_fp is not None):
             pt_artifact.save(output_fp + "/" + output_name + str(l) + ".qza")
+        if(save_biom):
+            with open(output_fp + "/" + output_name + str(l) + ".qza", "w") as file:
+                pt_biom.to_json("deblur-testing", file)
 
     clps = methods.get_collapse_counts(pt_bioms)
     clps.to_csv(output_fp + "/collapse.csv", index=False)
