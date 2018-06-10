@@ -219,6 +219,7 @@ def post_trims(input_fp, output_fp, trim_lengths,
 
 
     click.echo("{}s for importing for post_trims".format(str(time.clock() - start)))
+    click.echo("partition_count: {}".format(partition_count))
     return post_trims_art(output_fp, input_artifact,
                           trim_lengths, output_name, time_out, time_out_append,
                           partition_count, input_biom, save_biom)
@@ -273,7 +274,7 @@ def post_trims_art(output_fp, input_artifact=None,
     pt_bioms = []
     pt_arts = []
     for l in trim_lengths:
-        click.echo("Post-trimming to length {}".format(str(l)))
+        click.echo("Post-trimming to length {}, pc={}".format(str(l), str(partition_count)))
         pt_biom = methods.post_trim(input_biom, l, partition_count)
         #pt_bioms.append(pt_biom)
         pt_artifact = Artifact.import_data("FeatureTable[Frequency]", pt_biom)
