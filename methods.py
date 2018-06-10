@@ -133,15 +133,24 @@ def post_trim(db_biom, length, partition_count=None):
 
     return pt_biom
 
-def partition_table(tbl, partition_count):
+def partition_table(tbl, partition_count, drop=True):
     print("partition_Table() starting at " + time.strftime("[%H:%M:%S]"), flush=True)
-    df = tbl.to_dataframe()
-    dfs = np.array_split(df, partition_count, axis=1)
+    sids = tbl.ids()
+    id_parts = np.array_split(sids, partition_count)
 
-    pool = mp.ProcessPool(nodes=len(dfs))
-    args = [(np.array(x), x.index, x.columns) for x in dfs]
-    results = pool.map(make_biom, args)
+    pool = mp.ProcessPool(nodes=len(id_parts))
+    args = [(tbl, x, drop) for x in id_parts]
+    results = pool.map(index_tbl, args)
     return results
+
+def index_tbl(tbl_sids, drop=True):
+    tbl = tbl_sids[0]
+    sids = tbl_sids[1]
+
+    indexed = tbl.filter(sids, inplace=False)
+    if drop:
+        tbl.filter(sids, invert=True, inplace=True)
+    return indexed
 
 def make_biom(dat_obs_sample):
     return biom.Table(dat_obs_sample[0], dat_obs_sample[1], dat_obs_sample[2])

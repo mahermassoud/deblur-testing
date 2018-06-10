@@ -323,6 +323,22 @@ class TestGetOverlap(TestCase):
         with self.assertRaises(ValueError):
             get_overlap_tables(self.none, self.some1)
 
+class TestPartitionTable(TestCase):
+    def setUp(self):
+        self.tbl = biom.Table(np.array([[0,1,2,3,4],[5,6,7,8,9]]),["A","B"],
+                              ["S1","S2","S3","S4","S5"])
+        self.p1 = biom.Table(np.array([[0,1],[5,6]]),["A","B"],
+                              ["S1","S2"])
+        self.p2 = biom.Table(np.array([[2,3],[7,8]]),["A","B"],
+                              ["S3","S4"])
+        self.p3 = biom.Table(np.array([[4],[9]]),["A","B"],
+                              ["S5"])
+        self.exp = [self.p1, self.p2, self.p3]
+
+    def test_partition_drop(self):
+        obs = partition_table(self.tbl, 3)
+        self.assertEqual(self.exp, obs)
+
 class TestGetCountData(TestCase):
     def setUp(self):
         self.pre1 = biom.Table(np.array([[0,10,20,30],[40,20,10,30],[10,15,12,11],[7,8,8,9]]),
