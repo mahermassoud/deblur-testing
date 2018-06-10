@@ -105,14 +105,14 @@ def post_trim(db_biom, length, partition_count=None):
     -------
     biom.Table of trimmed,deblurred seqs
     """
-    print("Trimming post-demuxed seqs to {:d}, partition_count: {}".format(length, partition_count))
+    print("Trimming post-demuxed seqs to {:d}, partition_count: {}".format(length, partition_count), flush=True)
     if partition_count is None:
         pt_biom = db_biom.collapse(lambda i, m: i[:length], axis="observation",
                                    norm=False, include_collapsed_metadata=True)
     else:
-        print("Doing parallel post-trim, mp find {} cpu's".format(mp.cpu_count()))
+        print("Doing parallel post-trim, mp find {} cpu's".format(mp.cpu_count()), flush=True)
         sub_bioms = partition_table(db_biom, partition_count)
-        print("partition_Table() end at " + time.strftime("[%H:%M:%S]"))
+        print("partition_Table() end at " + time.strftime("[%H:%M:%S]"), flush=True)
 
         pool = mp.ProcessPool(nodes=partition_count)
         args = [(sb, length) for sb in sub_bioms]
@@ -134,7 +134,7 @@ def post_trim(db_biom, length, partition_count=None):
     return pt_biom
 
 def partition_table(tbl, partition_count):
-    print("partition_Table() starting at " + time.strftime("[%H:%M:%S]"))
+    print("partition_Table() starting at " + time.strftime("[%H:%M:%S]"), flush=True)
     df = tbl.to_dataframe()
     dfs = np.array_split(df, partition_count, axis=1)
 
