@@ -210,6 +210,7 @@ def post_trims(input_fp, output_fp, trim_lengths,
         return
     elif (input_fp is None):
         input_artifact = None
+        click.echo("Loading biom table")
         input_biom = biom.load_table(input_biom_fp)
     else:
         click.echo("Importing seq data from " + input_fp)
@@ -298,7 +299,8 @@ def post_trims_art(output_fp, input_artifact=None,
               required=True,
               help="Path to directory holding pre, post qzas, collapse.csv . "
                    "In naming format output by post_trims and pre_trims. "
-                   "Required that each post-trim has corresponding pre-trim")
+                   "Required that each post-trim has corresponding pre-trim eg:"
+                   "deblurred_pre_100nt.qza")
 @click.option('-o', '--output-fp',type=click.Path(file_okay=False,exists=True),
               default = None, required=False, help='Path to output csv files')
 @click.option('--trim-incr', type=click.INT, default=10, required=False,

@@ -105,7 +105,7 @@ def post_trim(db_biom, length, partition_count=None):
     -------
     biom.Table of trimmed,deblurred seqs
     """
-    print("Trimming post-demuxed seqs to {:d}".format(length))
+    print("Trimming post-demuxed seqs to {:d}, partition_count: {}".format(length, partition_count))
     if partition_count is None :
         pt_biom = db_biom.collapse(lambda i, m: i[:length], axis="observation",
                                    norm=False, include_collapsed_metadata=True)
