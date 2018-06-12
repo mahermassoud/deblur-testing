@@ -1,3 +1,7 @@
+"""
+Contains methods used in scripts.py for testing the difference between deblur
+pre-trim and post-trim
+"""
 from qiime2 import Artifact
 import time
 from qiime2 import Metadata
@@ -63,14 +67,16 @@ def import_dataset(working_dir_fp, metadata_barcode_column,
 
 
 def do_deblur(demuxed_seqs, pre_trim_length, num_cores = 1):
-    """Given demuxed sequences, quality filter,pre_trims them and returns the result
+    """Given demuxed sequences, quality filters , deblurs them and returns the result
 
     Parameters
     ----------
     demuxed_data: qiime2.Artifact
         demuxed data of type EmpSingleEndSequences
     pre_trim_length: int
-    length that we want to trim sequences to before deblur is ran
+        length that we want to trim sequences to before deblur is ran
+    num_cores: int
+        number of jobs to start when deblurring
 
     Returns
     -------
@@ -99,11 +105,11 @@ def post_trim(db_biom, length, partition_count=None):
         length to trim to
     partition_count: int
         if not None, partitions table into partition_count tables and
-        does post_trimming sepparetly then concatenates the tables
+        does post_trimming in parallel
 
     Returns
     -------
-    biom.Table of trimmed,deblurred seqs
+    biom.Table of trimmed, deblurred seqs with metadata for collapsed ids
     """
     print("Trimming post-demuxed seqs to {:d}, partition_count: {}".format(length, partition_count), flush=True)
     if partition_count is None:
@@ -134,6 +140,23 @@ def post_trim(db_biom, length, partition_count=None):
     return pt_biom
 
 def partition_table(tbl, partition_count, drop=True):
+    """
+    Partitions a biom table into n parts by sample
+
+    Parameters
+    ----------
+    tbl: biom.Table
+        table we are partitioning
+    partition_count: int
+        number of partitions to partition into
+    drop: bool
+        whether to drop columns as we partition, set to True to be
+        less memory-expensive
+
+    Returns
+    -------
+    list of biom.Table of length partition_count
+    """
     print("partition_Table() starting at " + time.strftime("[%H:%M:%S]"), flush=True)
     sids = tbl.ids()
     id_parts = np.array_split(sids, partition_count)
@@ -144,6 +167,20 @@ def partition_table(tbl, partition_count, drop=True):
     return results
 
 def index_tbl(tbl_sids, drop=True):
+    """
+    Wrapper function to filter samples from a table
+
+    Parameters
+    ----------
+    tbl_sids: 2-tuple
+        biom table we are filtering, list of sample ids we want to keep
+    drop: bool
+        whether to drop from table as we filter
+
+    Returns
+    -------
+    biom.Table with only the samples in tbl_sids[0]
+    """
     tbl = tbl_sids[0]
     sids = tbl_sids[1]
 
@@ -153,20 +190,57 @@ def index_tbl(tbl_sids, drop=True):
     return indexed
 
 def make_biom(dat_obs_sample):
+    """
+    Wrapper function of biom.Table()
+
+    Parameters
+    ----------
+    dat_obs_sample: 3-tuple
+        data, sample_ids, observation_ids
+
+    Returns
+    -------
+    biom.Table
+    """
     return biom.Table(dat_obs_sample[0], dat_obs_sample[1], dat_obs_sample[2])
 
 def single_post_trim(db_biom_length):
-  db_biom = db_biom_length[0]
-  length = db_biom_length[1]
-  print("Trimming post-demuxed seqs to {:d}".format(length))
-  pt_biom = db_biom.collapse(lambda i, m: i[:length], axis="observation",
-                             norm=False, include_collapsed_metadata=True)
+    """
+    Post trims a biom table, called by post_trims() in parallel
 
-  return pt_biom
+    Parameters
+    ----------
+    db_biom_length: 2-tuple
+        biom.Table, length we are post-trimming to
+
+    Returns
+    -------
+    biom.Table that has been post-trimmed, meaning each observation was
+    trimmed to argument length and matching observations were summed
+    """
+    db_biom = db_biom_length[0]
+    length = db_biom_length[1]
+    print("Trimming post-demuxed seqs to {:d}".format(length))
+    pt_biom = db_biom.collapse(lambda i, m: i[:length], axis="observation",
+                         norm=False, include_collapsed_metadata=True)
+
+    return pt_biom
 
 def divide_chunks(l, n):
     """
     Divides a list into sub lists of length n
+
+    Parameters
+    ----------
+    l: array_like
+        list we are dividing
+    n: int
+        size of chunks
+
+    Returns
+    -------
+    Generator where each item is n elements of l. If there are not enough
+    elements to make last chunk exactly n, it is as big as possible
     """
     if len(l) == 1:
       return None
@@ -174,10 +248,22 @@ def divide_chunks(l, n):
         yield l[i:i + n]
 
 def intersect_bioms(bioms):
-  if len(bioms) == 1:
-    return bioms[0]
-  else:
-    return bioms[0].merge(bioms[1])
+    """
+    unions 2 bioms,
+
+    Parameters
+    ----------
+    bioms: 2-tuple
+        holds 2 bioms we want to union
+
+    Returns
+    -------
+    biom.Table of union
+    """
+    if len(bioms) == 1:
+        return bioms[0]
+    else:
+        return bioms[0].merge(bioms[1])
 
 
 def get_collapse_counts(pt_bioms):
@@ -223,7 +309,7 @@ def get_distance_distribution(pre_table_overlap, post_table_overlap,
     post_table_overlap: biom.Table
         post trimmed reads
     by_sample: bool
-        True if we want to take each sample as a vector and compre distances
+        True if we want to take each sample as a vector and compare distances
 
     Returns
     -------
@@ -334,11 +420,6 @@ def get_pre_post_distance_data(pre_bioms, post_bioms, trim_lengths):
         same order as pre_bioms
     trim_lengths: array_like
         Trim lengths in descending order, should correspond to other arguments
-    by_sample: bool
-        True if we want to take each sample as a vector and compre distances
-    do_both: bool
-        If true, returns dataframes for both by sample and by observation.
-        Here to avoid overlapping twice
 
     Returns
     -------
@@ -430,12 +511,7 @@ def get_pairwise_diversity_data(pre_bioms, post_bioms, trim_lengths):
 
         pre_d_bc = get_pairwise_dist_mat(pre_biom, "braycurtis")
         post_d_bc = get_pairwise_dist_mat(post_biom, "braycurtis")
-        print("pre_d_bc, i: {}".format(i))
-        print(str(pre_d_bc))
-        print("post_d_bc")
-        print(str(post_d_bc))
         r, p, nsamp = mantel(pre_d_bc, post_d_bc)
-        print("r: {}, p: {}".format(str(r),str(p)))
         p_div.iloc[j] = [trim_lengths[i], "braycurtis", r, p, nsamp]
 
     p_div["r_sq"] = p_div["r"]**2

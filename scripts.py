@@ -1,3 +1,6 @@
+"""
+CLI interface for testing deblur pre vs post-trim
+"""
 import click
 from qiime2 import Artifact, Metadata
 from qiime2.plugins.demux.methods import emp_single
@@ -26,7 +29,7 @@ import numpy as np
 @click.option('-o', '--output-fp',  type=click.Path(dir_okay=False), default = None,
               help="Path to where demuxed qza is saved. Must specify filename. qza extension optional. Does not save if not supplied")
 def do_demux(input_fp, metadata, metadata_bc_col, rev_bc, rev_map_bc, output_fp):
-    """Imports raw seqsand runs demux on it
+    """Imports raw seqs and runs demux on it
     """
     return do_demux_art(input_fp, metadata, metadata_bc_col, rev_bc,
                         rev_map_bc, output_fp)
@@ -186,9 +189,11 @@ def pre_trims_art(input_artifact, trim_length= 100, trim_incr = 10,
 @click.option("-tl", "--trim-lengths", type=click.INT, multiple=True, required=False,
               default=[100,90], help="Trim lengths")
 @click.option('-on', '--output-name', default="deblurred_pt_", required=False,
-              help="Basename for output post trim qza, length appended")
+              help="Basename for output post trim qza's,bioms length appended")
 @click.option("-to", "--time-out",
-              help="Path to file we are appending time info to")
+              help="Path to file we are appending runtime info to, note: "
+                   "if using -pc, runtime is inaccurate due to how"
+                   "python measures cpu time. Use bash time command instead")
 @click.option("-toa", "--time-out-append",
               help="Identification string to append to time out file")
 @click.option("-pc", "--partition-count", type=click.INT,
@@ -196,7 +201,8 @@ def pre_trims_art(input_artifact, trim_length= 100, trim_incr = 10,
                    "post trimming")
 @click.option("-ib", "--input-biom-fp", type=click.Path(dir_okay=False, exists=True),
               help="Path to biom table we are demuxing")
-@click.option("-sb", "--save-biom", is_flag=True)
+@click.option("-sb", "--save-biom", is_flag=True,
+              help="Include to save a biom with same name and location as qza's")
 def post_trims(input_fp, output_fp, trim_lengths,
                output_name, time_out, time_out_append, partition_count,
                input_biom_fp, save_biom):
@@ -252,6 +258,16 @@ def post_trims_art(output_fp, input_artifact=None,
         lengths we are trimming to
     output_name: str
         string that postrimmed qzas are named as, with length appended
+    time_out: str
+        path to where runtime info is wrote
+    time_out_append: str
+        identifier to put next to runtime in seconds in time out file
+    partition_count: int
+        number of times to partition table in run in parallel. Should be #cores
+    input_biom: str
+        path to biom table, can be used instead of input_fp
+    save_biom: bool
+        if true, saves a .biom with same name as the qza
 
     Returns
     -------
@@ -285,8 +301,8 @@ def post_trims_art(output_fp, input_artifact=None,
             with open(output_fp + "/" + output_name + str(l) + ".biom", "w") as file:
                 pt_biom.to_json("deblur-testing", file)
 
-    #clps = methods.get_collapse_counts(pt_bioms)
-    #clps.to_csv(output_fp + "/collapse.csv", index=False)
+    clps = methods.get_collapse_counts(pt_bioms)
+    clps.to_csv(output_fp + "/collapse.csv", index=False)
 
     elapsed = time.clock() - start
     click.echo("{}s for post_trims".format(str(elapsed)))
@@ -323,6 +339,7 @@ def analysis(input_fp, output_fp, trim_incr, num_trims, trim_lengths):
     pres = dict()
     res = [f for f in os.listdir(input_fp)
            if re.match('deblurred_pre_\d+.qza', f)]
+    print(res)
     for f in res:
         fm = f.replace("_",".")
         fm = fm.split(".")
@@ -335,6 +352,7 @@ def analysis(input_fp, output_fp, trim_incr, num_trims, trim_lengths):
     posts = dict()
     res = [f for f in os.listdir(input_fp)
            if re.match('deblurred_pt_\d+.qza', f)]
+    print(res)
     for f in res:
         fm = f.replace("_",".")
         fm = fm.split(".")
@@ -382,7 +400,7 @@ def analysis_art(pre_artifacts, post_artifacts, clps_df=None, trim_incr=10,
     pre_bioms: array_like of biom.Table
         pre-trimmed bioms in descending trim length order. Should be in
         same order as post_bioms
-    post_artifacts: array_like of biom.Table
+    post_bioms: array_like of biom.Table
         post-trimmed bioms in descending trim length order. Should be in
         same order as pre_bioms
 
@@ -413,19 +431,23 @@ def analysis_art(pre_artifacts, post_artifacts, clps_df=None, trim_incr=10,
     if clps_df is not None:
         pre_post = pd.merge(pre_post, clps_df[["seq","num_collapses"]], on="seq")
 
+    if output_fp is not None:
+        pre_post.to_csv(output_fp + "/pre_post.csv", index=False)
+
+
     click.echo("Calculating pairwise diversity")
     pairwise_mantel = methods.get_pairwise_diversity_data(pre_bioms, post_bioms,
                                                           trim_lengths)
+
+    if output_fp is not None:
+        pairwise_mantel.to_csv(output_fp + "/pairwise_mantel.csv", index=False)
 
     click.echo("Calculating count info")
     counts, read_changes = methods.get_count_data(pre_bioms, pre_overlaps,
                                                   post_bioms, post_overlaps,
                                                   trim_lengths)
 
-    if(output_fp is not None):
-        pairwise_mantel.to_csv(output_fp + "/pairwise_mantel.csv", index=False)
-        pre_post.to_csv(output_fp + "/pre_post.csv", index=False)
-        pre_post_sample.to_csv(output_fp + "/pre_post_sample.csv", index=False)
+    if output_fp is not None:
         counts.to_csv(output_fp + "/counts.csv", index=False)
         read_changes.to_csv(output_fp + "/read_changes.csv", index=False)
 
@@ -574,7 +596,9 @@ def pre_post(input_fp, metadata, metadata_bc_col, rev_bc, rev_map_bc,
 @click.command()
 @click.option("-i", "--input-fp", required=True,
               type=click.Path(dir_okay=False, exists=True),
-              help="Paths to pre_trimmed seqs in .biom format", multiple=True)
+              help="Paths to pre_trimmed seqs in .biom format in descending"
+                   " trim length order!!",
+              multiple=True)
 @click.option("-o", "--output-fp", required=True,
               type=click.Path(file_okay=False),
               help="Directory where we will output everything, see other"
@@ -588,7 +612,13 @@ def pre_post(input_fp, metadata, metadata_bc_col, rev_bc, rev_map_bc,
 def biom_to_post(input_fp, output_fp, time_out, time_out_append, trim_lengths):
     """Runs the analysis pipeline starting from pre trimmed .biom files
     Do not trim to max length, is implicitly done.
-    Eg. if you want to trim ot lengths 150, 100, 90 only specifpy 100 and 90
+    Eg. if you want to trim ot lengths 150, 100, 90 only specify 100 and 90
+
+    Example
+    -------
+    (command line string is sbiom)
+    sbiom -i deblurred_pre_150nt.biom -i deblurred_pre_100nt.biom
+          -i deblurred_biom_90nt -o . -tl 150 -tl 100 -tl 90
     """
     start = time.clock()
 
@@ -695,71 +725,6 @@ def make_rand_biom(n_row, n_col, output_fp, len_seq, scale):
 
     return tbl
 
-@click.command()
-@click.option("-mi","--max-length-biom-fp", type=click.Path(dir_okay=False, exists=True),
-              required=True, help="Path to max length biom table")
-@click.option("-si", "--smaller-biom-fp", type=click.Path(dir_okay=False, exists=True),
-              required=True, help="Path to smaller biom table, can be multiple")
-@click.option("-o", "--output-fp", type=click.Path(file_okay=False),
-              help="Path to output subsetted.biom files to")
-@click.option("--identical", is_flag=True, help="Have this if qiita_ids have identical samples accross tables")
-def subset_emp_bioms(max_length_biom_fp, smaller_biom_fp, output_fp, identical,
-                     max_biom=None, smaller_bioms=None, file_only=True):
-    """
-    Subsets bioms by qiita ID and filters so they hold exact same samples,
-    saves them to folder specified.
-
-    Naming format
-    max length intersected with shorter:
-        <qiita_id>_<max_length>nt_int_<short_length>nt.biom
-    shorter intersect math length:
-        <qiita_id>_<short_length>nt_int_<max_length>nt.biom
-    """
-    if output_fp.endswith('/'):
-        output_fp = output_fp[:-1]
-
-    # Manual biom options are here so testing is easier
-    if(max_biom is None and smaller_bioms is None):
-        max_biom = biom.load_table(max_length_biom_fp)
-        max_length = get_length_biom(max_biom)
-
-        smaller_bioms = []
-        lengths = []
-        for fp in smaller_biom_fp:
-            as_biom = biom.load_table(fp)
-            smaller_bioms.append(as_biom)
-            lengths.append(get_length_biom(as_biom))
-
-    def partitioner(i, m):
-        return i.split('.')[0]  # sample IDs are of the form: <qiita_study_id>.<sample_id>
-
-    # dictionaries mapping qid to table
-    max_part_dict = dict([x for x in max_biom.partition(partitioner)])
-    smaller_dicts = dict([x for tbl in smaller_bioms for x in tbl.partition(partitioner())])
-
-    for qid in max_part_dict:
-        for length, qid_2_table in zip(lengths, smaller_dicts):
-            try:
-                qs_small = qid_2_table[qid]
-            except KeyError:
-                print("qid {} not found in table length {}, skipping".format(qid, str(length)))
-            qs_max = max_part_dict[qid]
-
-            if(not identical):
-                shared_ids = set(qs_max.ids()).intersection(set(qs_small.ids()))
-                qs_small.filter(shared_ids, inplace = True)
-                qs_max.filter(shared_ids, inplace = True)
-
-            qs_max_name = "{}_{}nt_int_{}nt.biom".format(qid, str(max_length), str(length))
-            qs_small_name = "{}_{}nt_int_{}nt.biom".format(qid, str(length), str(max_length))
-
-            if(output_fp is not None):
-                with open(output_fp + "/" + qs_max_name) as file:
-                    qs_max.to_json(generated_by="deblur_testing_subset_emp_bioms",
-                                   direct_io=file)
-                with open(output_fp + "/" + qs_small_name) as file:
-                    qs_small.to_json(generated_by="deblur_testing_subset_emp_bioms",
-                                   direct_io=file)
 
 @click.command()
 @click.option("-mi","--main-input-fp", required=True, type=click.Path(dir_okay=False, exists=True),
@@ -850,6 +815,7 @@ def subsample_biom(main_input_fp, ot_input_fp, start, end, count, output_fp):
               default = None, required=False,
               help='Path to output pairwise_mantel.csv')
 def pairwise_mantel(pre_fp, post_fp, trim_length, output_fp):
+    """Does pairwise mantel portion of analysis"""
     pre_bioms = [biom.load_table(fp) for fp in pre_fp]
     pt_bioms = [biom.load_table(fp) for fp in post_fp]
     if trim_length is None:
@@ -859,7 +825,7 @@ def pairwise_mantel(pre_fp, post_fp, trim_length, output_fp):
     df.to_csv(output_fp, index=False)
 
 def contains_ids(bioms, ids, axis):
-    """Given a list of bioms, determines whether they all have a list of
+    """Given a list of bioms, determines whether they all share a list of
     ids"""
     for biom in bioms:
         for id in ids:
