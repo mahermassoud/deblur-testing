@@ -14,6 +14,7 @@ import os
 import re
 import pandas as pd
 import numpy as np
+import tracemalloc
 
 @click.command()
 @click.option('-i','--input-fp', required=True,
@@ -208,6 +209,7 @@ def post_trims(input_fp, output_fp, trim_lengths,
                input_biom_fp, save_biom):
     start = time.clock()
 
+
     if output_fp.endswith('/'):
         output_fp = output_fp[:-1]
 
@@ -226,6 +228,7 @@ def post_trims(input_fp, output_fp, trim_lengths,
 
     click.echo("{}s for importing for post_trims".format(str(time.clock() - start)))
     click.echo("partition_count: {}".format(partition_count))
+
     return post_trims_art(output_fp, input_artifact,
                           trim_lengths, output_name, time_out, time_out_append,
                           partition_count, input_biom, save_biom)
@@ -277,6 +280,9 @@ def post_trims_art(output_fp, input_artifact=None,
     """
     start = time.clock()
 
+    tracemalloc.start()
+    before = tracemalloc.take_snapshot()
+
     if(input_biom is None):
         input_biom = input_artifact.view(biom.Table)
 
@@ -292,6 +298,8 @@ def post_trims_art(output_fp, input_artifact=None,
     for l in trim_lengths:
         click.echo("Post-trimming to length {}, pc={}".format(str(l), str(partition_count)))
         pt_biom = methods.post_trim(input_biom, l, partition_count)
+        after1 = tracemalloc.take_snapshot()
+        print_snapshot_cmp(before, after1, "after1")
         #pt_bioms.append(pt_biom)
         pt_artifact = Artifact.import_data("FeatureTable[Frequency]", pt_biom)
         #pt_arts.append(pt_artifact)
@@ -309,7 +317,31 @@ def post_trims_art(output_fp, input_artifact=None,
     if time_out is not None and time_out_append is not None:
         with open(time_out, "a") as file:
             file.write("{}\t{}\n".format(time_out_append, str(elapsed)))
+
+    after2 = tracemalloc.take_snapshot()
+    print_snapshot_cmp(after1, after2, "after2")
     return pt_arts
+
+
+def print_snapshot_cmp(pre, post, message):
+    #pre = pre.filter_traces((
+    #    tracemalloc.Filter(True, "scripts.py"),
+    #    tracemalloc.Filter(True, "biom"),
+    #    tracemalloc.Filter(True, "methods.py"),
+    #    tracemalloc.Filter(True, "numpy"),
+    #    tracemalloc.Filter(True, "pandas")
+    #))
+    #post = post.filter_traces((
+    #    tracemalloc.Filter(True, "scripts.py"),
+    #    tracemalloc.Filter(True, "biom"),
+    #    tracemalloc.Filter(True, "methods.py"),
+    #    tracemalloc.Filter(True, "numpy"),
+    #    tracemalloc.Filter(True, "pandas")
+    #))
+    top_stats = post.compare_to(pre, 'lineno')
+    print(message)
+    for stat in top_stats[:100]:
+        print(stat)
 
 @click.command()
 @click.option("-i","--input-fp", type=click.Path(exists=True, file_okay=False),
