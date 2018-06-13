@@ -18,6 +18,8 @@ import os
 import scipy
 import skbio.io
 import numpy as np
+import gc
+import resource
 from collections import Counter
 
 def import_dataset(working_dir_fp, metadata_barcode_column,
@@ -94,7 +96,7 @@ def do_deblur(demuxed_seqs, pre_trim_length, num_cores = 1):
 
 
 
-def post_trim(db_biom, length, partition_count=None):
+def post_trim(input_biom_fp, input_artifact_fp, length, pool, partition_count=None):
     """Trims a deblurred set of seqs
 
     Parameters
@@ -106,22 +108,38 @@ def post_trim(db_biom, length, partition_count=None):
     partition_count: int
         if not None, partitions table into partition_count tables and
         does post_trimming in parallel
+    pool: mp.ProcessPool
+        pool we are running on
 
     Returns
     -------
     biom.Table of trimmed, deblurred seqs with metadata for collapsed ids
     """
+    if(input_artifact_fp is None and input_biom_fp is None):
+        print("No input given! See --help")
+        return
+    elif (input_artifact_fp is None):
+        print("Loading biom table")
+        db_biom = biom.load_table(input_biom_fp)
+    else:
+        print("Importing seq data from " + input_artifact_fp)
+        input_artifact = Artifact.load(input_artifact_fp)
+        db_biom = input_artifact.view(biom.Table)
+
     print("Trimming post-demuxed seqs to {:d}, partition_count: {}".format(length, partition_count), flush=True)
     if partition_count is None:
         pt_biom = db_biom.collapse(lambda i, m: i[:length], axis="observation",
                                    norm=False, include_collapsed_metadata=True)
     else:
         print("Doing parallel post-trim, mp find {} cpu's".format(mp.cpu_count()), flush=True)
-        sub_bioms = partition_table(db_biom, partition_count)
+        sub_bioms = partition_table(db_biom, partition_count, pool)
+        del db_biom
+        gc.collect()
         print("partition_Table() end at " + time.strftime("[%H:%M:%S]"), flush=True)
 
-        pool = mp.ProcessPool(nodes=partition_count)
         args = [(sb, length) for sb in sub_bioms]
+        del sub_bioms
+        gc.collect()
         pt_bioms = pool.map(single_post_trim, args)
 
         args = list(divide_chunks(pt_bioms, 2))
@@ -139,7 +157,7 @@ def post_trim(db_biom, length, partition_count=None):
 
     return pt_biom
 
-def partition_table(tbl, partition_count, drop=True):
+def partition_table(tbl, partition_count, pool, drop=True):
     """
     Partitions a biom table into n parts by sample
 
@@ -152,6 +170,8 @@ def partition_table(tbl, partition_count, drop=True):
     drop: bool
         whether to drop columns as we partition, set to True to be
         less memory-expensive
+    pool: mp.ProcessPool
+        pool we are running on
 
     Returns
     -------
@@ -161,9 +181,10 @@ def partition_table(tbl, partition_count, drop=True):
     sids = tbl.ids()
     id_parts = np.array_split(sids, partition_count)
 
-    pool = mp.ProcessPool(nodes=len(id_parts))
     args = [(tbl, x, drop) for x in id_parts]
     results = pool.map(index_tbl, args)
+    del tbl
+    gc.collect()
     return results
 
 def index_tbl(tbl_sids, drop=True):
@@ -218,6 +239,7 @@ def single_post_trim(db_biom_length):
     biom.Table that has been post-trimmed, meaning each observation was
     trimmed to argument length and matching observations were summed
     """
+    gc.collect()
     db_biom = db_biom_length[0]
     length = db_biom_length[1]
     print("Trimming post-demuxed seqs to {:d}".format(length))
@@ -225,6 +247,10 @@ def single_post_trim(db_biom_length):
                          norm=False, include_collapsed_metadata=True)
 
     return pt_biom
+
+def current_mem_usage(message):
+    print(message)
+    print("max rsss " + str(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024))
 
 def divide_chunks(l, n):
     """

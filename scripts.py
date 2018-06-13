@@ -3,18 +3,19 @@ CLI interface for testing deblur pre vs post-trim
 """
 import click
 from qiime2 import Artifact, Metadata
+import biom
 from qiime2.plugins.demux.methods import emp_single
 from random import choice
 import methods
 import seaborn as sns
 import matplotlib.pyplot as plt
-import biom
 import time
 import os
 import re
 import pandas as pd
 import numpy as np
 import tracemalloc
+import pathos.multiprocessing as mp
 
 @click.command()
 @click.option('-i','--input-fp', required=True,
@@ -213,37 +214,27 @@ def post_trims(input_fp, output_fp, trim_lengths,
     if output_fp.endswith('/'):
         output_fp = output_fp[:-1]
 
-    if(input_fp is None and input_biom_fp is None):
-        click.echo("No input given! See --help")
-        return
-    elif (input_fp is None):
-        input_artifact = None
-        click.echo("Loading biom table")
-        input_biom = biom.load_table(input_biom_fp)
-    else:
-        click.echo("Importing seq data from " + input_fp)
-        input_artifact = Artifact.load(input_fp)
-        input_biom=None
 
 
     click.echo("{}s for importing for post_trims".format(str(time.clock() - start)))
     click.echo("partition_count: {}".format(partition_count))
 
-    return post_trims_art(output_fp, input_artifact,
+    return post_trims_art(output_fp, input_fp, input_biom_fp,
                           trim_lengths, output_name, time_out, time_out_append,
-                          partition_count, input_biom, save_biom)
+                          partition_count, save_biom)
 
 
-def post_trims_art(output_fp, input_artifact=None,
+def post_trims_art(output_fp, input_artifact_fp=None, input_biom_fp=None,
                    trim_lengths=[100,90],
                    output_name="deblurred_pt_", time_out=None,
-                   time_out_append=None, partition_count=None, input_biom=None,
+                   time_out_append=None, partition_count=None,
                    save_biom=False):
     """Post trims to various specified lengths.
     Saves qza's if specified. With naming format "deblurred_pt_<length>.qza
     eg. If input is length 100, trim_incr=10 and num_trims=5, post trims to
     lengths 100, 90, 80, 70, 60
 
+    TODO
     Parameters
     ----------
     input_fp: str
@@ -280,12 +271,6 @@ def post_trims_art(output_fp, input_artifact=None,
     """
     start = time.clock()
 
-    tracemalloc.start()
-    before = tracemalloc.take_snapshot()
-
-    if(input_biom is None):
-        input_biom = input_artifact.view(biom.Table)
-
     #otus = input_biom.ids(axis="observation")
     #trim_length = len(otus[0])
     #for otu in otus:
@@ -297,9 +282,9 @@ def post_trims_art(output_fp, input_artifact=None,
     pt_arts = []
     for l in trim_lengths:
         click.echo("Post-trimming to length {}, pc={}".format(str(l), str(partition_count)))
-        pt_biom = methods.post_trim(input_biom, l, partition_count)
-        after1 = tracemalloc.take_snapshot()
-        print_snapshot_cmp(before, after1, "after1")
+
+        pool = mp.ProcessPool(nodes=partition_count, maxtasksperchild=5)
+        pt_biom = methods.post_trim(input_biom_fp, input_artifact_fp, l, pool, partition_count)
         #pt_bioms.append(pt_biom)
         pt_artifact = Artifact.import_data("FeatureTable[Frequency]", pt_biom)
         #pt_arts.append(pt_artifact)
@@ -318,8 +303,6 @@ def post_trims_art(output_fp, input_artifact=None,
         with open(time_out, "a") as file:
             file.write("{}\t{}\n".format(time_out_append, str(elapsed)))
 
-    after2 = tracemalloc.take_snapshot()
-    print_snapshot_cmp(after1, after2, "after2")
     return pt_arts
 
 
@@ -465,6 +448,7 @@ def analysis_art(pre_artifacts, post_artifacts, clps_df=None, trim_incr=10,
 
     if output_fp is not None:
         pre_post.to_csv(output_fp + "/pre_post.csv", index=False)
+        pre_post_sample.to_csv(output_fp + "/pre_post_sample.csv", index=False)
 
 
     click.echo("Calculating pairwise diversity")

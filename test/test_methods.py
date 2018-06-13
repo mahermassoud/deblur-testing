@@ -8,6 +8,7 @@ import biom
 import numpy as np
 from numpy.testing import assert_array_almost_equal
 from pandas.util.testing import assert_frame_equal
+import pathos.multiprocessing as mp
 import sys
 
 NUM_CORES = 4
@@ -334,9 +335,10 @@ class TestPartitionTable(TestCase):
         self.p3 = biom.Table(np.array([[4],[9]]),["A","B"],
                               ["S5"])
         self.exp = [self.p1, self.p2, self.p3]
+        self.pool = mp.ProcessPool(nodes=mp.cpu_count())
 
     def test_partition_drop(self):
-        obs = partition_table(self.tbl, 3)
+        obs = partition_table(self.tbl, 3, self.pool)
         self.assertEqual(self.exp, obs)
 
 class TestGetCountData(TestCase):
