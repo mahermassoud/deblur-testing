@@ -117,10 +117,9 @@ def post_trim(db_biom, length, partition_count=None):
                                    norm=False, include_collapsed_metadata=True)
     else:
         print("Doing parallel post-trim, mp find {} cpu's".format(mp.cpu_count()), flush=True)
-        sub_bioms = partition_table(db_biom, partition_count)
+        sub_bioms, pool = partition_table(db_biom, partition_count)
         print("partition_Table() end at " + time.strftime("[%H:%M:%S]"), flush=True)
 
-        pool = mp.ProcessPool(nodes=partition_count)
         args = [(sb, length) for sb in sub_bioms]
         pt_bioms = pool.map(single_post_trim, args)
 
@@ -128,7 +127,6 @@ def post_trim(db_biom, length, partition_count=None):
         while len(args) >= 1:
             print("len args {}\n\n".format(len(args)))
 
-            pool = mp.ProcessPool(nodes=len(args))
             pt_bioms = pool.map(intersect_bioms, args)
 
             args = list(divide_chunks(pt_bioms, 2))
@@ -156,15 +154,16 @@ def partition_table(tbl, partition_count, drop=True):
     Returns
     -------
     list of biom.Table of length partition_count
+    processor pool we should re-use
     """
     print("partition_Table() starting at " + time.strftime("[%H:%M:%S]"), flush=True)
     sids = tbl.ids()
     id_parts = np.array_split(sids, partition_count)
 
-    pool = mp.ProcessPool(nodes=len(id_parts))
+    pool = mp.ProcessPool(nodes=len(id_parts), maxtasksperchild=1)
     args = [(tbl, x, drop) for x in id_parts]
     results = pool.map(index_tbl, args)
-    return results
+    return results, pool
 
 def index_tbl(tbl_sids, drop=True):
     """

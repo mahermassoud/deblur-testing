@@ -336,7 +336,7 @@ class TestPartitionTable(TestCase):
         self.exp = [self.p1, self.p2, self.p3]
 
     def test_partition_drop(self):
-        obs = partition_table(self.tbl, 3)
+        obs, grbg = partition_table(self.tbl, 3)
         self.assertEqual(self.exp, obs)
 
 class TestGetCountData(TestCase):
