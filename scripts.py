@@ -413,9 +413,15 @@ def analysis_art(pre_artifacts, post_artifacts, clps_df=None, trim_incr=10,
     if clps_df is not None:
         pre_post = pd.merge(pre_post, clps_df[["seq","num_collapses"]], on="seq")
 
+    if(output_fp is not None):
+        pre_post.to_csv(output_fp + "/pre_post.csv", index=False)
+        pre_post_sample.to_csv(output_fp + "/pre_post_sample.csv", index=False)
+
     click.echo("Calculating pairwise diversity")
     pairwise_mantel = methods.get_pairwise_diversity_data(pre_bioms, post_bioms,
                                                           trim_lengths)
+    if(output_fp is not None):
+        pairwise_mantel.to_csv(output_fp + "/pairwise_mantel.csv", index=False)
 
     click.echo("Calculating count info")
     counts, read_changes = methods.get_count_data(pre_bioms, pre_overlaps,
@@ -423,9 +429,6 @@ def analysis_art(pre_artifacts, post_artifacts, clps_df=None, trim_incr=10,
                                                   trim_lengths)
 
     if(output_fp is not None):
-        pairwise_mantel.to_csv(output_fp + "/pairwise_mantel.csv", index=False)
-        pre_post.to_csv(output_fp + "/pre_post.csv", index=False)
-        pre_post_sample.to_csv(output_fp + "/pre_post_sample.csv", index=False)
         counts.to_csv(output_fp + "/counts.csv", index=False)
         read_changes.to_csv(output_fp + "/read_changes.csv", index=False)
 
@@ -857,6 +860,20 @@ def pairwise_mantel(pre_fp, post_fp, trim_length, output_fp):
 
     df = methods.get_pairwise_diversity_data(pre_bioms, pt_bioms, trim_length)
     df.to_csv(output_fp, index=False)
+
+@click.command()
+@click.option("-i", "--biom-fp", type=click.Path(dir_okay=False, exists=True),
+              required=True, help="Path to biom")
+@click.option('-o', '--output-fp', type=click.Path(dir_okay=False),
+              default=None, required=True,
+              help='Path to output collapse csv')
+def get_collapse_count(biom_fp, output_fp):
+    """
+    Creates csv of collapse counts for a post-trimmed biom table
+    """
+    clps = get_collapse_count([biom.load_table(biom_fp)])
+    clps.to_csv(output_fp, index=False)
+
 
 def contains_ids(bioms, ids, axis):
     """Given a list of bioms, determines whether they all have a list of
