@@ -285,8 +285,8 @@ def post_trims_art(output_fp, input_artifact=None,
             with open(output_fp + "/" + output_name + str(l) + ".biom", "w") as file:
                 pt_biom.to_json("deblur-testing", file)
 
-    #clps = methods.get_collapse_counts(pt_bioms)
-    #clps.to_csv(output_fp + "/collapse.csv", index=False)
+    clps = methods.get_collapse_counts(pt_bioms)
+    clps.to_csv(output_fp + "/collapse.csv", index=False)
 
     elapsed = time.clock() - start
     click.echo("{}s for post_trims".format(str(elapsed)))
@@ -871,7 +871,7 @@ def get_collapse_count(biom_fp, output_fp):
     """
     Creates csv of collapse counts for a post-trimmed biom table
     """
-    clps = get_collapse_count([biom.load_table(biom_fp)])
+    clps = methods.get_collapse_counts([biom.load_table(biom_fp)])
     clps.to_csv(output_fp, index=False)
 
 
