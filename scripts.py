@@ -361,6 +361,7 @@ def analysis(input_fp, input_path_file, clps_df, output_fp, trim_incr, num_trims
         paths = pd.read_csv(input_path_file, header=None)
         pre_artifacts = [load_artifact(x) for x in paths.iloc[:,0]]
         post_artifacts = [load_artifact(x) for x in paths.iloc[:,1]]
+        clps_df = pd.read_csv(clps_df, header=None)
 
 
     click.echo("{}s for loading qza's for analysis"\
