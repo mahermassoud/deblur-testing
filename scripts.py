@@ -285,8 +285,8 @@ def post_trims_art(output_fp, input_artifact=None,
             with open(output_fp + "/" + output_name + str(l) + ".biom", "w") as file:
                 pt_biom.to_json("deblur-testing", file)
 
-    #clps = methods.get_collapse_counts(pt_bioms)
-    #clps.to_csv(output_fp + "/collapse.csv", index=False)
+    clps = methods.get_collapse_counts(pt_bioms)
+    clps.to_csv(output_fp + "/collapse.csv", index=False)
 
     elapsed = time.clock() - start
     click.echo("{}s for post_trims".format(str(elapsed)))
@@ -297,11 +297,17 @@ def post_trims_art(output_fp, input_artifact=None,
 
 @click.command()
 @click.option("-i","--input-fp", type=click.Path(exists=True, file_okay=False),
-              required=True,
               help="Path to directory holding pre, post qzas, collapse.csv . "
                    "In naming format output by post_trims and pre_trims. "
                    "Required that each post-trim has corresponding pre-trim eg:"
                    "deblurred_pre_100nt.qza")
+@click.option("-ip", "--input-path-file", type=click.Path(exists=True, dir_okay=False),
+              help="csv file containing paths to .biom or .qza's we are using"
+                   "for analysis in format:\n"
+                   "<pre_longest>,<post_longest>\n"
+                   "<pre_2nd_longest>,<post_2nd_longest>\n")
+@click.option("-cfp", "--clps-df", type=click.Path(exists=True, dir_okay=False),
+              help="Path to collapse file")
 @click.option('-o', '--output-fp',type=click.Path(file_okay=False,exists=True),
               default = None, required=False, help='Path to output csv files')
 @click.option('--trim-incr', type=click.INT, default=10, required=False,
@@ -310,41 +316,53 @@ def post_trims_art(output_fp, input_artifact=None,
               help='Number of lengths to trim to, default 5')
 @click.option("-tl", "--trim-lengths", type=click.INT, multiple=True, required=False,
               help="Trim lengths")
-def analysis(input_fp, output_fp, trim_incr, num_trims, trim_lengths):
-
-    click.echo(trim_lengths)
+def analysis(input_fp, input_path_file, clps_df, output_fp, trim_incr, num_trims, trim_lengths):
 
     start = time.clock()
-    if input_fp.endswith('/'):
-        input_fp = input_fp[:-1]
+
     if output_fp.endswith('/'):
         output_fp = output_fp[:-1]
 
-    pres = dict()
-    res = [f for f in os.listdir(input_fp)
-           if re.match('deblurred_pre_\d+.qza', f)]
-    for f in res:
-        fm = f.replace("_",".")
-        fm = fm.split(".")
-        length = int(fm[len(fm)-2])
-        artifact = Artifact.load(input_fp + "/" + f)
-        pres[length] = artifact
-    pre_artifacts = [pres[x] for x in sorted(pres.keys())]
-    pre_artifacts.reverse()
+    if(input_fp is None and input_path_file is None):
+        click.echo("No inputs supplied, see --help!")
+        return
+    elif(input_fp is not None):
+        if input_fp.endswith('/'):
+            input_fp = input_fp[:-1]
+        pres = dict()
+        res = [f for f in os.listdir(input_fp)
+               if re.match('deblurred_pre_\d+.qza', f)]
+        for f in res:
+            fm = f.replace("_",".")
+            fm = fm.split(".")
+            length = int(fm[len(fm)-2])
+            artifact = Artifact.load(input_fp + "/" + f)
+            pres[length] = artifact
+        pre_artifacts = [pres[x] for x in sorted(pres.keys())]
+        pre_artifacts.reverse()
 
-    posts = dict()
-    res = [f for f in os.listdir(input_fp)
-           if re.match('deblurred_pt_\d+.qza', f)]
-    for f in res:
-        fm = f.replace("_",".")
-        fm = fm.split(".")
-        length = int(fm[len(fm)-2])
-        artifact = Artifact.load(input_fp + "/" + f)
-        posts[length] = artifact
-    post_artifacts = [posts[x] for x in sorted(posts.keys())]
-    post_artifacts.reverse()
+        posts = dict()
+        res = [f for f in os.listdir(input_fp)
+               if re.match('deblurred_pt_\d+.qza', f)]
+        for f in res:
+            fm = f.replace("_",".")
+            fm = fm.split(".")
+            length = int(fm[len(fm)-2])
+            artifact = Artifact.load(input_fp + "/" + f)
+            posts[length] = artifact
+        post_artifacts = [posts[x] for x in sorted(posts.keys())]
+        post_artifacts.reverse()
 
-    clps_df = pd.read_csv(input_fp + "/collapse.csv")
+        clps_df = pd.read_csv(input_fp + "/collapse.csv")
+    else:
+        if clps_df is None:
+            click.echo("Supply collapse path!")
+            return
+        paths = pd.read_csv(input_path_file, header=None)
+        pre_artifacts = [load_artifact(x) for x in paths.iloc[:,0]]
+        post_artifacts = [load_artifact(x) for x in paths.iloc[:,1]]
+
+
     click.echo("{}s for loading qza's for analysis"\
                .format(str(time.clock() - start)))
 
@@ -353,6 +371,12 @@ def analysis(input_fp, output_fp, trim_incr, num_trims, trim_lengths):
 
     return analysis_art(pre_artifacts, post_artifacts, clps_df,
                         trim_incr, num_trims, output_fp, trim_lengths)
+
+def load_artifact(fp):
+    if fp.endswith(".biom"):
+        return Artifact.import_data("FeatureTable[Frequency]", biom.load_table(fp))
+    else:
+        return Artifact.load(fp)
 
 def analysis_art(pre_artifacts, post_artifacts, clps_df=None, trim_incr=10,
                  num_trims=5, output_fp=None, trim_lengths=None,
@@ -871,7 +895,7 @@ def get_collapse_count(biom_fp, output_fp):
     """
     Creates csv of collapse counts for a post-trimmed biom table
     """
-    clps = get_collapse_count([biom.load_table(biom_fp)])
+    clps = methods.get_collapse_counts([biom.load_table(biom_fp)])
     clps.to_csv(output_fp, index=False)
 
 

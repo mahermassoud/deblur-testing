@@ -23,6 +23,7 @@ setup(
         ssbiom=scripts:subsample_biom
         pw_mantel=scripts:pairwise_mantel
         rand_biom=scripts:make_rand_biom
+        clps_count=scripts:get_collapse_count
     ''',
 )
 
