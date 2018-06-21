@@ -330,6 +330,14 @@ def get_overlap_tables(pre, post):
     post_table_overlap = post.filter(features_in_common, axis='observation',
                                      inplace=False)
 
+    pre_samples = pre.ids()
+    post_samples = post.ids()
+    samples_in_common = set(pre_samples) & set(post_samples)
+    if len(samples_in_common) == 0:
+        raise ValueError("Pre and post do not have any samples in common")
+    pre_table_overlap.filter(samples_in_common, axis='sample', inplace=True)
+    post_table_overlap.filter(samples_in_common, axis='sample', inplace=True)
+
     # put the tables into the same order on both axes
     pre_table_overlap = pre_table_overlap.sort_order(post_table_overlap.ids(axis='observation'), axis='observation')
     pre_table_overlap = pre_table_overlap.sort_order(post_table_overlap.ids(axis='sample'), axis='sample')
