@@ -1,10 +1,10 @@
 #!/bin/bash
 
-#PBS -l nodes=1:ppn=32
+#PBS -l nodes=1:ppn=8
 
-#PBS -l walltime=50:00:00
+#PBS -l walltime=150:00:00
 
-#PBS -l mem=70gb
+#PBS -l mem=240gb
 
 #PBS -N post_trim_emp_90nt
 
@@ -15,7 +15,7 @@
 
 fp_150nt="/projects/emp/03-otus/04-deblur/emp_deblur_150bp.release1.biom"
 i_dir="/panfs/panfs1.ucsd.edu/panscratch/mamaher/emp_all_out/90nt"
-o_name="emp_deblur_150bp_release1_pt_"
+o_name="emp_deblur_150bp_release1_pt_90"
 
 source activate q2env
 mkdir -p $i_dir
@@ -27,5 +27,5 @@ time rpost_trim -ib $fp_150nt \
                 -on $o_name \
                 -to elapsed.tsv \
                 -toa $o_name \
-                -pc 32 \
+                -pc 8 \
                 -sb
