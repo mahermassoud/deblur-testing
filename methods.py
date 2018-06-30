@@ -296,7 +296,7 @@ def get_pairwise_dist_mat(deblur_biom, dist_type):
 
     print("starting beta_diversity")
     dist_mat = beta_diversity(dist_type,
-                              deblur_biom.transpose().to_dataframe().as_matrix().astype("int64"), 
+                              deblur_biom.transpose().matrix_data.astype("int64").todense(),
                               ids = deblur_biom.ids(axis="sample"))
     print("end beta_diversity")
     return dist_mat

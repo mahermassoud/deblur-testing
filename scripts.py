@@ -431,6 +431,8 @@ def analysis_art(pre_artifacts, post_artifacts, clps_df=None, trim_incr=10,
         length = len(otus[0])
         trim_lengths, prc = calculate_trim_lengths(length, trim_incr,num_trims)
 
+    click.echo("Sorting bioms")
+
     click.echo("Calculating pre-post distances")
     pre_post, pre_post_sample, pre_overlaps, post_overlaps = \
         methods.get_pre_post_distance_data(pre_bioms, post_bioms, trim_lengths)
