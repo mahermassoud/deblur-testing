@@ -361,7 +361,7 @@ def analysis(input_fp, input_path_file, clps_df, output_fp, trim_incr, num_trims
         paths = pd.read_csv(input_path_file, header=None)
         pre_artifacts = [load_artifact(x) for x in paths.iloc[:,0]]
         post_artifacts = [load_artifact(x) for x in paths.iloc[:,1]]
-        clps_df = pd.read_csv(clps_df, header=None)
+        clps_df = pd.read_csv(clps_df)
 
 
     click.echo("{}s for loading qza's for analysis"\
@@ -473,11 +473,14 @@ def do_plots(input_fp, output_fp):
     if output_fp.endswith('/'):
         output_fp = output_fp[:-1]
 
-    pairwise_mantel = pd.read_csv(input_fp + "/pairwise_mantel.csv")
     pre_post = pd.read_csv(input_fp + "/pre_post.csv")
     pre_post_sample = pd.read_csv(input_fp + "/pre_post_sample.csv")
-    counts = pd.read_csv(input_fp + "/counts.csv")
-    read_changes = pd.read_csv(input_fp + "/read_changes.csv")
+    #pairwise_mantel = pd.read_csv(input_fp + "/pairwise_mantel.csv")
+    #counts = pd.read_csv(input_fp + "/counts.csv")
+    #read_changes = pd.read_csv(input_fp + "/read_changes.csv")
+    pairwise_mantel = None
+    counts = None
+    read_changes = None
 
     click.echo("{}s for importing data for plots".format(str(time.clock() - start)))
 
@@ -501,13 +504,6 @@ def plot_pd(pairwise_mantel, pre_post, pre_post_sample, counts, read_changes, ou
     pyplot figure of each respective plot
     """
     start = time.clock()
-    mantel_plot = sns.lmplot(x="trim_length", y="r_sq", row="dist_type", hue="dist_type",
-                             data=pairwise_mantel, ci=None, fit_reg=False)
-    mantel_plot.set(xlabel="Trim Length")
-
-    if output_fp is not None:
-        plt.savefig(output_fp + "/pairwise_mantel.png")
-    plt.figure()
 
     pp_plot = sns.boxplot(x="length", y="dist", data=pre_post, hue="dist_type")
     pp_plot.set(xlabel="trim_length", title="Distribution of distances between matching pre/post otus")
@@ -521,6 +517,14 @@ def plot_pd(pairwise_mantel, pre_post, pre_post_sample, counts, read_changes, ou
 
     if output_fp is not None:
         plt.savefig(output_fp + "/pre_post_sample.png")
+    plt.figure()
+    
+    mantel_plot = sns.lmplot(x="trim_length", y="r_sq", row="dist_type", hue="dist_type",
+                             data=pairwise_mantel, ci=None, fit_reg=False)
+    mantel_plot.set(xlabel="Trim Length")
+
+    if output_fp is not None:
+        plt.savefig(output_fp + "/pairwise_mantel.png")
     plt.figure()
 
     clps_reg = sns.lmplot(x="num_collapses", y="dist", data=pre_post,
